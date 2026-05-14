@@ -1,6 +1,6 @@
 # Strategy Retrospective
 
-Last updated: 2026-05-14T04:01:32.243576+00:00
+Last updated: 2026-05-14T10:04:47.905029+00:00
 
 This document is auto-updated after strategy execution and validation. It is advisory and never enables live trading.
 
@@ -13,8 +13,8 @@ This document is auto-updated after strategy execution and validation. It is adv
 | ri-ca56d8efd289 | futures-perp-basis | demo | preflight_not_profitable | warning | 16 | 2026-05-12T06:13:18.089786+00:00 | Do not force demo orders; wait for a profitable preflight or improve scanner pricing. |
 | ri-a01c63a277fe | spot-perp-carry | demo | preflight_not_profitable | warning | 16 | 2026-05-12T06:13:18.089786+00:00 | Do not force demo orders; wait for a profitable preflight or improve scanner pricing. |
 | ri-b173009977c9 | all | paper | insufficient_samples | warning | 15 | 2026-05-11T15:03:47.005508+00:00 | Collect more local/demo samples before promotion or size decisions. |
+| ri-db0c0799a25f | triangular-multi-route | demo | insufficient_samples | warning | 3 | 2026-05-14T10:04:47.905029+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-1c817c39b0d9 | trend-breakout | demo | execution_loss | warning | 2 | 2026-05-12T06:13:18.089786+00:00 | Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning. |
-| ri-db0c0799a25f | triangular-multi-route | demo | insufficient_samples | warning | 2 | 2026-05-14T04:01:32.243576+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-7833b202c763 | momentum-rotation | demo | execution_loss | warning | 1 | 2026-05-12T06:13:18.089786+00:00 | Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning. |
 | ri-a5d9ba2247ed | all | demo | insufficient_samples | info | 1 | 2026-05-11T12:13:44.813640+00:00 | Collect more local/demo samples before promotion or size decisions. |
 
@@ -27,21 +27,21 @@ This document is auto-updated after strategy execution and validation. It is adv
 | ri-ca56d8efd289 | futures-perp-basis | demo | preflight_not_profitable | warning | 16 | 2026-05-12T06:13:18.089786+00:00 | Do not force demo orders; wait for a profitable preflight or improve scanner pricing. |
 | ri-a01c63a277fe | spot-perp-carry | demo | preflight_not_profitable | warning | 16 | 2026-05-12T06:13:18.089786+00:00 | Do not force demo orders; wait for a profitable preflight or improve scanner pricing. |
 | ri-b173009977c9 | all | paper | insufficient_samples | warning | 15 | 2026-05-11T15:03:47.005508+00:00 | Collect more local/demo samples before promotion or size decisions. |
+| ri-db0c0799a25f | triangular-multi-route | demo | insufficient_samples | warning | 3 | 2026-05-14T10:04:47.905029+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-1c817c39b0d9 | trend-breakout | demo | execution_loss | warning | 2 | 2026-05-12T06:13:18.089786+00:00 | Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning. |
-| ri-db0c0799a25f | triangular-multi-route | demo | insufficient_samples | warning | 2 | 2026-05-14T04:01:32.243576+00:00 | Collect more local/demo samples before promotion or size decisions. |
 
 ## Improved Issues
 
 | ID | Strategy | Mode | Category | Severity | Occurrences | Last Seen | Recommendation |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | ri-d004b4da0097 | triangular-multi-route | demo | pnl_out_of_tolerance | critical | 10 | 2026-05-10T10:53:10.928405+00:00 | Investigate account-equity delta versus order cash-flow before trusting the PnL sample. |
-| ri-a95fd3d3a6f5 | triangular-multi-route | demo | runtime_guard_cooldown | critical | 2 | 2026-05-11T03:20:59.180411+00:00 | Respect the runtime guard cooldown and inspect the last failure reason. |
+| ri-a95fd3d3a6f5 | triangular-multi-route | demo | runtime_guard_cooldown | critical | 3 | 2026-05-14T09:55:41.427383+00:00 | Respect the runtime guard cooldown and inspect the last failure reason. |
 | ri-8f034a701f5e | triangular-multi-route | demo | market_data_failure | warning | 3 | 2026-05-11T03:25:07.444702+00:00 | Wait for healthy market data or reduce polling before rerunning. |
 | ri-0abce69d13ce | all | demo | insufficient_samples | warning | 2 | 2026-05-11T12:04:32.783830+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-5aadbdab9f8d | triangular-multi-route | demo | preflight_not_profitable | warning | 2 | 2026-05-11T12:04:32.783830+00:00 | Do not force demo orders; wait for a profitable preflight or improve scanner pricing. |
+| ri-514b732af535 | triangular-multi-route | demo | validation_failed | warning | 2 | 2026-05-14T09:55:41.427383+00:00 | Review this issue before the next strategy execution. |
 | ri-1faf866c5ef1 | triangular-multi-route | demo | execution_loss | warning | 1 | 2026-05-10T10:53:10.928405+00:00 | Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning. |
 | ri-34b8ad27898a | triangular-multi-route | demo | leg_not_filled_abort | warning | 1 | 2026-05-10T10:53:10.928405+00:00 | Review leg marketability, orderbook depth, and unwind evidence before another demo window. |
-| ri-514b732af535 | triangular-multi-route | demo | validation_failed | warning | 1 | 2026-05-11T03:20:59.180411+00:00 | Review this issue before the next strategy execution. |
 | ri-61ed4e3198d2 | all | demo | insufficient_samples | info | 1 | 2026-05-11T06:25:58.061207+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-a8496b6550da | momentum-rotation | demo | insufficient_samples | info | 1 | 2026-05-11T16:30:31.612263+00:00 | Collect more local/demo samples before promotion or size decisions. |
 | ri-7e286d7b673e | trend-breakout | demo | insufficient_samples | info | 1 | 2026-05-11T16:29:46.281047+00:00 | Collect more local/demo samples before promotion or size decisions. |
@@ -72,6 +72,8 @@ This document is auto-updated after strategy execution and validation. It is adv
 
 | Time | Operation | Issues | Modes | Summary |
 | --- | --- | --- | --- | --- |
+| 2026-05-14T10:04:47.905029+00:00 | strategy_validate_demo_window | 1 | demo,paper | {"cycles_completed": 3, "executed": 3, "execution_mode": "demo", "net_profit": "0.667779", "operation": "strategy_validate_demo_window", "run_completed": true, "skipped": 0, "validation_status": "Needs More Samples"} |
+| 2026-05-14T09:55:41.427383+00:00 | strategy_validate_demo_window | 2 | demo,paper | {"cycles_completed": 0, "executed": 0, "execution_mode": "demo", "net_profit": "0", "operation": "strategy_validate_demo_window", "run_completed": false, "skipped": 0, "validation_status": "Fail"} |
 | 2026-05-14T04:01:32.243576+00:00 | strategy_validate_demo_window | 1 | demo,paper | {"cycles_completed": 3, "executed": 3, "execution_mode": "demo", "net_profit": "0.600680", "operation": "strategy_validate_demo_window", "run_completed": true, "skipped": 0, "validation_status": "Needs More Samples"} |
 | 2026-05-13T08:35:23.958281+00:00 | strategy_run | 0 | demo | {"cycles_completed": 1, "executed": null, "execution_mode": "demo", "net_profit": "0.111501", "operation": "strategy_run", "run_completed": true, "skipped": null, "validation_status": null} |
 | 2026-05-12T06:13:18.096421+00:00 | strategy_validate_local | 0 | paper | {"cycles_completed": 1, "executed": 1, "execution_mode": "paper", "net_profit": "3.6492041591681663667266546", "operation": "strategy_validate_local", "run_completed": true, "skipped": 0, "validation_status": "Pass"} |
@@ -80,8 +82,6 @@ This document is auto-updated after strategy execution and validation. It is adv
 | 2026-05-11T16:51:00.804468+00:00 | strategy_run | 1 | demo | {"cycles_completed": 1, "executed": null, "execution_mode": "demo", "net_profit": "0.000000", "operation": "strategy_run", "run_completed": true, "skipped": null, "validation_status": null} |
 | 2026-05-11T16:50:23.405953+00:00 | strategy_validate_local | 0 | paper | {"cycles_completed": 1, "executed": 1, "execution_mode": "paper", "net_profit": "1.174961", "operation": "strategy_validate_local", "run_completed": true, "skipped": 0, "validation_status": "Pass"} |
 | 2026-05-11T16:30:31.612263+00:00 | strategy_validate_demo_window | 2 | demo,paper | {"cycles_completed": 1, "executed": 1, "execution_mode": "demo", "net_profit": "-0.032849", "operation": "strategy_validate_demo_window", "run_completed": true, "skipped": 0, "validation_status": "Needs More Samples"} |
-| 2026-05-11T16:29:46.281047+00:00 | strategy_validate_demo_window | 2 | demo,paper | {"cycles_completed": 1, "executed": 1, "execution_mode": "demo", "net_profit": "-0.033016", "operation": "strategy_validate_demo_window", "run_completed": true, "skipped": 0, "validation_status": "Needs More Samples"} |
-| 2026-05-11T16:28:34.558373+00:00 | strategy_validate_local | 0 | paper | {"cycles_completed": 1, "executed": 2, "execution_mode": "paper", "net_profit": "4.134961", "operation": "strategy_validate_local", "run_completed": true, "skipped": 3, "validation_status": "Pass"} |
 
 ## Manual Notes
 

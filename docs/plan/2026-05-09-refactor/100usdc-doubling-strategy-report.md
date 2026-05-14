@@ -189,3 +189,29 @@ Decision:
 - `triangular-multi-route` is the current champion for the 100 USDC route at paper and OKX demo layers.
 - Keep the next runs at the same demo size. Do not increase size until more same-size demo windows pass across different market conditions.
 - Live trading remains out of scope. The live layer is intentionally blocked even though local and demo validation now pass.
+
+## 2026-05-14 Same-Size OKX Demo Follow-Up
+
+The next same-size OKX Demo Trading window was run after the local worktree was organized and merged into local `master`. Live trading remained disabled and no live canary promotion was enabled.
+
+Run notes:
+
+- The first retry from the local sandbox failed DNS resolution before reaching OKX and caused the runtime guard to record market-data failures for `triangular-multi-route`.
+- The guard entered its configured 5-minute cooldown until `2026-05-14T10:00:26Z`; the cooldown was respected and was not manually cleared or bypassed.
+- After `cooldown_active=false`, the same 3-cycle OKX demo validation was rerun with network access.
+
+Validation:
+
+| Command | Result |
+| --- | --- |
+| `.venv/bin/crypto-assistant config validate --config configs/okx.demo.example.yaml --json` | Pass. Demo config remained `trading.live_trading=false`, `okx.sandbox=true`, `okx.okx_demo=true`, `agent_trading.allow_demo_orders=true`, `agent_trading.allow_live_orders=false`, and `strategy_runtime.validation_allow_live_canary=false`. |
+| `.venv/bin/crypto-assistant strategy guard-status --config configs/okx.demo.example.yaml --strategy triangular-multi-route --execution-mode demo --json` | Before the successful rerun, guard cooldown had expired with `cooldown_active=false`. After the rerun, guard reset to clean state with no consecutive failures, no consecutive losses, no market-data failures, no rate-limit failures, and last reason `profitable_execution`. |
+| `.venv/bin/crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy triangular-multi-route --cycles 3 --symbol BTC/USDT --json` | Completed 3 demo cycles: 3 executed, 3 wins, net profit `0.667779` USDT, max drawdown `0`, `live_orders_sent=false`, post-run `open_spot_orders=0`, `open_swap_orders=0`, and `swap_positions=0`. |
+| `.venv/bin/crypto-assistant strategy validation-report --config configs/okx.demo.example.yaml --execution-mode demo --strategy triangular-multi-route --limit 30 --json` | Aggregate demo evidence: 16 scanned events, 13 executed, 3 skipped due to the sandbox DNS/market-data failure, 13 wins, 0 losses, realized net profit `2.832021` USDT, expected preflight net PnL `3.310794` USDT, max drawdown `0`, complete receipts, PnL within tolerance, residual inventory within tolerance, and execution quality passed. |
+| `.venv/bin/crypto-assistant strategy promotion-status --config configs/okx.demo.example.yaml --strategy triangular-multi-route --json` | Local layer `Pass`; demo layer `Pass` with 13 executed demo wins and `2.832021` USDT net profit; live layer `Fail` by design because live canary is disabled, live trading is disabled, and agent live orders are disabled. |
+
+Decision:
+
+- Continue collecting same-size demo samples across different market windows.
+- Do not increase demo size while skipped market-data events still appear in the rolling evidence window.
+- Do not enable live trading or live canary; the live layer remains intentionally blocked.

@@ -1,13 +1,13 @@
 {
   "market_regime": {
-    "sample_count": 10,
+    "sample_count": 16,
     "source": "journal",
     "strategy_tags": {
       "triangular-multi-route": "unknown"
     },
     "tag": "unknown",
     "tag_counts": {
-      "unknown": 10
+      "unknown": 16
     },
     "volatility": "unknown"
   },
@@ -120,14 +120,14 @@
     "triangular-multi-route": {
       "action": "promote",
       "evidence_mode": "demo",
-      "net_profit_usdt": "2.164242",
+      "net_profit_usdt": "2.832021",
       "reason_codes": [
         "simulated_profitability_passed"
       ],
-      "samples": 10,
+      "samples": 13,
       "status": "champion",
       "strategy_name": "triangular-multi-route",
-      "updated_at": "2026-05-14T04:01:32.249039+00:00",
+      "updated_at": "2026-05-14T10:04:47.914893+00:00",
       "win_rate_pct": "100.00"
     },
     "volatility-squeeze-breakout": {
@@ -144,6 +144,6 @@
       "win_rate_pct": "0"
     }
   },
-  "updated_at": "2026-05-14T04:01:32.249039+00:00",
+  "updated_at": "2026-05-14T10:04:47.914893+00:00",
   "version": 1
 }

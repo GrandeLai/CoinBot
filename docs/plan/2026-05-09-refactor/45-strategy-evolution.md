@@ -1,6 +1,6 @@
 # Strategy Evolution
 
-Updated at: 2026-05-14 04:01:32.249637+00:00
+Updated at: 2026-05-14 10:04:47.915802+00:00
 
 This report is simulation-only. It never enables live trading and never sends live orders.
 
@@ -8,11 +8,11 @@ This report is simulation-only. It never enables live trading and never sends li
 
 - Tag: unknown
 - Source: journal
-- Sample Count: 10
+- Sample Count: 16
 
 ## Promoted Strategies
 
-- triangular-multi-route: status=champion, action=promote, samples=10, win_rate=100.00, net_profit=2.164242, reasons=simulated_profitability_passed
+- triangular-multi-route: status=champion, action=promote, samples=13, win_rate=100.00, net_profit=2.832021, reasons=simulated_profitability_passed
 
 ## Archived Strategies
 
@@ -28,4 +28,4 @@ This report is simulation-only. It never enables live trading and never sends li
 
 ## All Decisions
 
-- triangular-multi-route: status=champion, action=promote, samples=10, win_rate=100.00, net_profit=2.164242, reasons=simulated_profitability_passed
+- triangular-multi-route: status=champion, action=promote, samples=13, win_rate=100.00, net_profit=2.832021, reasons=simulated_profitability_passed

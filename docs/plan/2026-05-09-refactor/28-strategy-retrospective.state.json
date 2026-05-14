@@ -282,13 +282,13 @@
       "dedupe_key": "triangular-multi-route|demo|insufficient_samples|minimum_samples_not_met:3<10",
       "execution_mode": "demo",
       "first_seen_at": "2026-05-11T03:24:53.026170+00:00",
-      "improved_at": "2026-05-11T03:25:07.444702+00:00",
+      "improved_at": "2026-05-14T09:55:41.427383+00:00",
       "issue_id": "ri-db0c0799a25f",
       "last_context": {
         "status": "Needs More Samples"
       },
-      "last_seen_at": "2026-05-14T04:01:32.243576+00:00",
-      "occurrences": 2,
+      "last_seen_at": "2026-05-14T10:04:47.905029+00:00",
+      "occurrences": 3,
       "reason": "minimum_samples_not_met:3<10",
       "recommendation": "Collect more local/demo samples before promotion or size decisions.",
       "severity": "warning",
@@ -389,14 +389,14 @@
       "dedupe_key": "triangular-multi-route|demo|runtime_guard_cooldown|market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
       "execution_mode": "demo",
       "first_seen_at": "2026-05-11T03:17:47.634717+00:00",
-      "improved_at": "2026-05-11T03:24:53.027453+00:00",
+      "improved_at": "2026-05-14T10:04:47.905029+00:00",
       "issue_id": "ri-a95fd3d3a6f5",
       "last_context": {
-        "cooldown_until": "2026-05-11T03:22:27.929257+00:00",
+        "cooldown_until": "2026-05-14T10:00:26.970549+00:00",
         "last_net_profit": "0"
       },
-      "last_seen_at": "2026-05-11T03:20:59.180411+00:00",
-      "occurrences": 2,
+      "last_seen_at": "2026-05-14T09:55:41.427383+00:00",
+      "occurrences": 3,
       "reason": "market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
       "recommendation": "Respect the runtime guard cooldown and inspect the last failure reason.",
       "severity": "critical",
@@ -408,13 +408,13 @@
       "dedupe_key": "triangular-multi-route|demo|validation_failed|runtime_guard_cooldown",
       "execution_mode": "demo",
       "first_seen_at": "2026-05-11T03:20:59.180212+00:00",
-      "improved_at": "2026-05-11T03:24:53.027453+00:00",
+      "improved_at": "2026-05-14T10:04:47.905029+00:00",
       "issue_id": "ri-514b732af535",
       "last_context": {
         "status": "Fail"
       },
-      "last_seen_at": "2026-05-11T03:20:59.180411+00:00",
-      "occurrences": 1,
+      "last_seen_at": "2026-05-14T09:55:41.427383+00:00",
+      "occurrences": 2,
       "reason": "runtime_guard_cooldown",
       "recommendation": "Review this issue before the next strategy execution.",
       "severity": "warning",
@@ -423,6 +423,52 @@
     }
   },
   "recent_runs": [
+    {
+      "created_at": "2026-05-14T10:04:47.905029+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "demo",
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:demo",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_demo_window",
+      "summary": {
+        "cycles_completed": 3,
+        "executed": 3,
+        "execution_mode": "demo",
+        "net_profit": "0.667779",
+        "operation": "strategy_validate_demo_window",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-14T09:55:41.427383+00:00",
+      "observed_issue_count": 2,
+      "observed_modes": [
+        "demo",
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:demo",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_demo_window",
+      "summary": {
+        "cycles_completed": 0,
+        "executed": 0,
+        "execution_mode": "demo",
+        "net_profit": "0",
+        "operation": "strategy_validate_demo_window",
+        "run_completed": false,
+        "skipped": 0,
+        "validation_status": "Fail"
+      }
+    },
     {
       "created_at": "2026-05-14T04:01:32.243576+00:00",
       "observed_issue_count": 1,
@@ -851,60 +897,8 @@
         "skipped": 5,
         "validation_status": "Needs More Samples"
       }
-    },
-    {
-      "created_at": "2026-05-11T13:43:25.526134+00:00",
-      "observed_issue_count": 1,
-      "observed_modes": [
-        "paper"
-      ],
-      "observed_strategy_modes": [
-        "all:paper",
-        "cross-exchange:paper",
-        "funding-carry-hedged:paper",
-        "futures-perp-basis:paper",
-        "spot-perp-carry:paper",
-        "triangular-multi-route:paper"
-      ],
-      "operation": "strategy_validate_local",
-      "summary": {
-        "cycles_completed": 1,
-        "executed": 0,
-        "execution_mode": "paper",
-        "net_profit": "0",
-        "operation": "strategy_validate_local",
-        "run_completed": true,
-        "skipped": 5,
-        "validation_status": "Needs More Samples"
-      }
-    },
-    {
-      "created_at": "2026-05-11T13:33:30.629636+00:00",
-      "observed_issue_count": 1,
-      "observed_modes": [
-        "paper"
-      ],
-      "observed_strategy_modes": [
-        "all:paper",
-        "cross-exchange:paper",
-        "funding-carry-hedged:paper",
-        "futures-perp-basis:paper",
-        "spot-perp-carry:paper",
-        "triangular-multi-route:paper"
-      ],
-      "operation": "strategy_validate_local",
-      "summary": {
-        "cycles_completed": 1,
-        "executed": 0,
-        "execution_mode": "paper",
-        "net_profit": "0",
-        "operation": "strategy_validate_local",
-        "run_completed": true,
-        "skipped": 5,
-        "validation_status": "Needs More Samples"
-      }
     }
   ],
-  "updated_at": "2026-05-14T04:01:32.243576+00:00",
+  "updated_at": "2026-05-14T10:04:47.905029+00:00",
   "version": 1
 }
