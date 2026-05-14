@@ -504,6 +504,12 @@ strategy_runtime:
     assert revival_help_exit.value.code == 0
     assert "--cycles" in revival_help_output.out
 
+    with pytest.raises(SystemExit) as demo_window_help_exit:
+        main(["strategy", "demo-window", "--help"])
+    demo_window_help_output = capsys.readouterr()
+    assert demo_window_help_exit.value.code == 0
+    assert "--public-health-only" in demo_window_help_output.out
+
     with pytest.raises(SystemExit) as candidate_help_exit:
         main(["strategy", "candidate-backtest", "--help"])
     candidate_help_output = capsys.readouterr()
@@ -559,6 +565,16 @@ def test_cli_strategy_validate_demo_blocks_with_safe_default_config(capsys) -> N
 
 def test_cli_strategy_validate_demo_window_blocks_with_safe_default_config(capsys) -> None:
     code = main(["strategy", "validate-demo-window", "--config", str(EXAMPLE_CONFIG), "--strategy", "all", "--cycles", "1", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert code != 0
+    assert payload["error"]["type"] == "SafetyError"
+    assert "enabled OKX sandbox" in payload["error"]["message"]
+
+
+def test_cli_strategy_demo_window_blocks_with_safe_default_config(capsys) -> None:
+    code = main(["strategy", "demo-window", "--config", str(EXAMPLE_CONFIG), "--strategy", "triangular-multi-route", "--cycles", "1", "--json"])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 

@@ -284,6 +284,23 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_validate_demo_window.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
     _add_json(strategy_validate_demo_window)
     strategy_validate_demo_window.set_defaults(handler=_handle_strategy_validate_demo_window)
+    strategy_demo_window = strategy_sub.add_parser(
+        "demo-window",
+        help="Run a safety-gated OKX Demo Trading window orchestration",
+    )
+    strategy_demo_window.add_argument("--config", required=True, help="Path to OKX demo YAML config")
+    strategy_demo_window.add_argument("--strategy", default="triangular-multi-route", help="Strategy name")
+    strategy_demo_window.add_argument("--cycles", type=int, default=3, help="Number of demo validation cycles")
+    strategy_demo_window.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_demo_window.add_argument("--target-exchange", default="okx", help="Enabled target exchange for health and market checks")
+    strategy_demo_window.add_argument("--report-limit", type=int, default=30, help="Number of rolling demo events to inspect before execution")
+    strategy_demo_window.add_argument(
+        "--public-health-only",
+        action="store_true",
+        help="Skip private account read during the no-order health check",
+    )
+    _add_json(strategy_demo_window)
+    strategy_demo_window.set_defaults(handler=_handle_strategy_demo_window)
     strategy_promotion_status = strategy_sub.add_parser("promotion-status", help="Show local/demo/live-canary promotion status")
     strategy_promotion_status.add_argument("--config", help="Path to YAML config")
     strategy_promotion_status.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -584,6 +601,19 @@ def _handle_strategy_validate_demo_window(args: argparse.Namespace) -> tuple[dic
     )
     result = payload["demo_window_validation"]
     return payload, f"demo_window_validation status={result['status']} executed={result['metrics']['executed']}"
+
+
+def _handle_strategy_demo_window(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_demo_window(
+        strategy_name=args.strategy,
+        cycles=args.cycles,
+        symbol=args.symbol,
+        target_exchange=args.target_exchange,
+        report_limit=args.report_limit,
+        include_private_health=not args.public_health_only,
+    )
+    result = payload["strategy_demo_window_orchestration"]
+    return payload, f"strategy_demo_window status={result['status']} orders_attempted={result['orders_attempted']}"
 
 
 def _handle_strategy_promotion_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

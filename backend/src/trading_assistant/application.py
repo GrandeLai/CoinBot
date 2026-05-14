@@ -38,6 +38,7 @@ from trading_assistant.strategies.candidate_backtest import StrategyCandidateBac
 from trading_assistant.strategies.review import StrategyReviewService
 from trading_assistant.strategies.runner import StrategyRunner
 from trading_assistant.strategies.validation_report import StrategyValidationReportService
+from trading_assistant.validation.demo_window_orchestrator import StrategyDemoWindowOrchestrator
 from trading_assistant.validation.service import StrategyValidationService
 from trading_assistant.workflow.route import TradingRouteWorkflow
 
@@ -410,6 +411,50 @@ class TradingAssistantApp:
             "retrospective_path": retrospective_after["retrospective_path"],
             "evolution_after": evolution_after,
             "evolution_path": evolution_after["report_path"],
+        }
+
+    def strategy_demo_window(
+        self,
+        strategy_name: str,
+        cycles: int,
+        symbol: str,
+        target_exchange: str = "okx",
+        report_limit: int = 30,
+        include_private_health: bool = True,
+    ) -> dict[str, Any]:
+        """Run a safety-gated OKX Demo Trading window orchestration."""
+        self._assert_okx_demo_config_ready()
+        target_strategy_names = [definition.name for definition in StrategyRegistry().expand(strategy_name)]
+        orchestrator = StrategyDemoWindowOrchestrator(
+            health_checker=lambda: self.exchange_sandbox_check(
+                target_exchange,
+                symbol,
+                include_private=include_private_health,
+            ),
+            guard_checker=lambda: self.strategy_guard_status(strategy_name=strategy_name, execution_mode="demo"),
+            market_compare_checker=lambda: self.strategy_market_compare(
+                strategy_name=strategy_name,
+                symbol=symbol,
+                target_exchange=target_exchange,
+            ),
+            validation_report_checker=lambda: self.strategy_validation_report(
+                execution_mode="demo",
+                strategy_name=strategy_name,
+                limit=report_limit,
+            ),
+            demo_window_runner=lambda: self.strategy_validate_demo_window(
+                strategy_name=strategy_name,
+                cycles=cycles,
+                symbol=symbol,
+            ),
+        )
+        return {
+            "strategy_demo_window_orchestration": orchestrator.run(
+                strategy_name=strategy_name,
+                target_strategy_names=target_strategy_names,
+                cycles=cycles,
+                symbol=symbol,
+            )
         }
 
     def strategy_promotion_status(self, strategy_name: str) -> dict[str, Any]:
