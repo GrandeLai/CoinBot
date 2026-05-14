@@ -1,0 +1,910 @@
+{
+  "issues": {
+    "all|demo|insufficient_samples|minimum_samples_not_met:0<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "all|demo|insufficient_samples|minimum_samples_not_met:0<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T11:43:55.127566+00:00",
+      "improved_at": "2026-05-11T12:13:44.813640+00:00",
+      "issue_id": "ri-0abce69d13ce",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T12:04:32.783830+00:00",
+      "occurrences": 2,
+      "reason": "minimum_samples_not_met:0<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "all"
+    },
+    "all|demo|insufficient_samples|minimum_samples_not_met:1<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "all|demo|insufficient_samples|minimum_samples_not_met:1<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T12:13:44.810167+00:00",
+      "issue_id": "ri-a5d9ba2247ed",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T12:13:44.813640+00:00",
+      "occurrences": 1,
+      "reason": "minimum_samples_not_met:1<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "info",
+      "status": "open",
+      "strategy_name": "all"
+    },
+    "all|demo|insufficient_samples|minimum_samples_not_met:3<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "all|demo|insufficient_samples|minimum_samples_not_met:3<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T06:25:58.060144+00:00",
+      "improved_at": "2026-05-11T11:43:55.128747+00:00",
+      "issue_id": "ri-61ed4e3198d2",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T06:25:58.061207+00:00",
+      "occurrences": 1,
+      "reason": "minimum_samples_not_met:3<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "info",
+      "status": "improved",
+      "strategy_name": "all"
+    },
+    "all|paper|insufficient_samples|minimum_samples_not_met:0<1": {
+      "category": "insufficient_samples",
+      "dedupe_key": "all|paper|insufficient_samples|minimum_samples_not_met:0<1",
+      "execution_mode": "paper",
+      "first_seen_at": "2026-05-11T12:24:20.558080+00:00",
+      "issue_id": "ri-b173009977c9",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T15:03:47.005508+00:00",
+      "occurrences": 15,
+      "reason": "minimum_samples_not_met:0<1",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "all"
+    },
+    "cross-exchange|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+      "category": "preflight_not_profitable",
+      "dedupe_key": "cross-exchange|demo|preflight_not_profitable|demo_preflight_not_profitable",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.925776+00:00",
+      "improved_at": "2026-05-11T03:40:05.247797+00:00",
+      "issue_id": "ri-d3399ff1a4d3",
+      "last_context": {
+        "cycle": 1,
+        "decision": "skipped",
+        "message": "OKX Demo Trading execution skipped by preflight profitability gate.",
+        "net_profit": "-0.032448",
+        "selected_opportunity_id": "okx-demo-cross-exchange"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 16,
+      "reason": "demo_preflight_not_profitable",
+      "recommendation": "Do not force demo orders; wait for a profitable preflight or improve scanner pricing.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "cross-exchange"
+    },
+    "funding-carry-hedged|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+      "category": "preflight_not_profitable",
+      "dedupe_key": "funding-carry-hedged|demo|preflight_not_profitable|demo_preflight_not_profitable",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.926627+00:00",
+      "improved_at": "2026-05-11T03:40:05.247797+00:00",
+      "issue_id": "ri-a5df76fbd5d2",
+      "last_context": {
+        "cycle": 1,
+        "decision": "skipped",
+        "message": "OKX Demo Trading execution skipped by preflight profitability gate.",
+        "net_profit": "-0.065108",
+        "selected_opportunity_id": "okx-demo-funding-carry-hedged"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 16,
+      "reason": "demo_preflight_not_profitable",
+      "recommendation": "Do not force demo orders; wait for a profitable preflight or improve scanner pricing.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "funding-carry-hedged"
+    },
+    "futures-perp-basis|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+      "category": "preflight_not_profitable",
+      "dedupe_key": "futures-perp-basis|demo|preflight_not_profitable|demo_preflight_not_profitable",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.926638+00:00",
+      "improved_at": "2026-05-11T03:40:05.247797+00:00",
+      "issue_id": "ri-ca56d8efd289",
+      "last_context": {
+        "cycle": 1,
+        "decision": "skipped",
+        "message": "OKX Demo Trading execution skipped by preflight profitability gate.",
+        "net_profit": "-0.064914",
+        "selected_opportunity_id": "okx-demo-futures-perp-basis"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 16,
+      "reason": "demo_preflight_not_profitable",
+      "recommendation": "Do not force demo orders; wait for a profitable preflight or improve scanner pricing.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "futures-perp-basis"
+    },
+    "momentum-rotation|demo|execution_loss|net_profit_non_positive": {
+      "category": "execution_loss",
+      "dedupe_key": "momentum-rotation|demo|execution_loss|net_profit_non_positive",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T16:30:31.611265+00:00",
+      "issue_id": "ri-7833b202c763",
+      "last_context": {
+        "cycle": 1,
+        "decision": "executed",
+        "message": "OKX Demo Trading execution completed; orders were filled or canceled under lifecycle controls.",
+        "net_profit": "-0.032849",
+        "selected_opportunity_id": "okx-demo-momentum-rotation"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 1,
+      "reason": "net_profit_non_positive",
+      "recommendation": "Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "momentum-rotation"
+    },
+    "momentum-rotation|demo|insufficient_samples|minimum_samples_not_met:1<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "momentum-rotation|demo|insufficient_samples|minimum_samples_not_met:1<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T16:30:31.611297+00:00",
+      "improved_at": "2026-05-12T06:13:18.089786+00:00",
+      "issue_id": "ri-a8496b6550da",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T16:30:31.612263+00:00",
+      "occurrences": 1,
+      "reason": "minimum_samples_not_met:1<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "info",
+      "status": "improved",
+      "strategy_name": "momentum-rotation"
+    },
+    "spot-perp-carry|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+      "category": "preflight_not_profitable",
+      "dedupe_key": "spot-perp-carry|demo|preflight_not_profitable|demo_preflight_not_profitable",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.926633+00:00",
+      "improved_at": "2026-05-11T03:40:05.247797+00:00",
+      "issue_id": "ri-a01c63a277fe",
+      "last_context": {
+        "cycle": 1,
+        "decision": "skipped",
+        "message": "OKX Demo Trading execution skipped by preflight profitability gate.",
+        "net_profit": "-0.065011",
+        "selected_opportunity_id": "okx-demo-spot-perp-carry"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 16,
+      "reason": "demo_preflight_not_profitable",
+      "recommendation": "Do not force demo orders; wait for a profitable preflight or improve scanner pricing.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "spot-perp-carry"
+    },
+    "trend-breakout|demo|execution_loss|net_profit_non_positive": {
+      "category": "execution_loss",
+      "dedupe_key": "trend-breakout|demo|execution_loss|net_profit_non_positive",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T16:29:46.279546+00:00",
+      "improved_at": "2026-05-11T16:51:18.910123+00:00",
+      "issue_id": "ri-1c817c39b0d9",
+      "last_context": {
+        "cycle": 1,
+        "decision": "executed",
+        "message": "OKX Demo Trading execution completed; orders were filled or canceled under lifecycle controls.",
+        "net_profit": "0.000000",
+        "selected_opportunity_id": "okx-demo-trend-breakout"
+      },
+      "last_seen_at": "2026-05-12T06:13:18.089786+00:00",
+      "occurrences": 2,
+      "reason": "net_profit_non_positive",
+      "recommendation": "Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "trend-breakout"
+    },
+    "trend-breakout|demo|insufficient_samples|minimum_samples_not_met:1<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "trend-breakout|demo|insufficient_samples|minimum_samples_not_met:1<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T16:29:46.279584+00:00",
+      "improved_at": "2026-05-11T16:51:00.804468+00:00",
+      "issue_id": "ri-7e286d7b673e",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T16:29:46.281047+00:00",
+      "occurrences": 1,
+      "reason": "minimum_samples_not_met:1<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "info",
+      "status": "improved",
+      "strategy_name": "trend-breakout"
+    },
+    "triangular-multi-route|demo|execution_loss|net_profit_non_positive": {
+      "category": "execution_loss",
+      "dedupe_key": "triangular-multi-route|demo|execution_loss|net_profit_non_positive",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.927250+00:00",
+      "improved_at": "2026-05-10T10:53:30.584404+00:00",
+      "issue_id": "ri-1faf866c5ef1",
+      "last_context": {
+        "cycle": 1,
+        "decision": "executed",
+        "message": "OKX Demo Trading execution completed; orders were filled or canceled under lifecycle controls.",
+        "net_profit": "-0.032347",
+        "selected_opportunity_id": "okx-demo-triangular"
+      },
+      "last_seen_at": "2026-05-10T10:53:10.928405+00:00",
+      "occurrences": 1,
+      "reason": "net_profit_non_positive",
+      "recommendation": "Keep size unchanged and inspect fees, slippage, fills, and route assumptions before rerunning.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|insufficient_samples|minimum_samples_not_met:0<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "triangular-multi-route|demo|insufficient_samples|minimum_samples_not_met:0<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T03:17:47.634160+00:00",
+      "improved_at": "2026-05-11T03:18:07.355459+00:00",
+      "issue_id": "ri-3c96bd614313",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-11T03:17:47.635054+00:00",
+      "occurrences": 1,
+      "reason": "minimum_samples_not_met:0<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "info",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|insufficient_samples|minimum_samples_not_met:3<10": {
+      "category": "insufficient_samples",
+      "dedupe_key": "triangular-multi-route|demo|insufficient_samples|minimum_samples_not_met:3<10",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T03:24:53.026170+00:00",
+      "improved_at": "2026-05-11T03:25:07.444702+00:00",
+      "issue_id": "ri-db0c0799a25f",
+      "last_context": {
+        "status": "Needs More Samples"
+      },
+      "last_seen_at": "2026-05-14T04:01:32.243576+00:00",
+      "occurrences": 2,
+      "reason": "minimum_samples_not_met:3<10",
+      "recommendation": "Collect more local/demo samples before promotion or size decisions.",
+      "severity": "warning",
+      "status": "open",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|leg_not_filled_abort|leg_not_filled:spot:ETH/BTC:buy:canceled:filled=0": {
+      "category": "leg_not_filled_abort",
+      "dedupe_key": "triangular-multi-route|demo|leg_not_filled_abort|leg_not_filled:spot:ETH/BTC:buy:canceled:filled=0",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.927254+00:00",
+      "improved_at": "2026-05-10T10:53:30.584404+00:00",
+      "issue_id": "ri-34b8ad27898a",
+      "last_context": {
+        "abort_reason": "leg_not_filled:spot:ETH/BTC:buy:canceled:filled=0",
+        "cycle": 1,
+        "decision": "executed",
+        "message": "OKX Demo Trading execution completed; orders were filled or canceled under lifecycle controls.",
+        "net_profit": "-0.032347",
+        "selected_opportunity_id": "okx-demo-triangular"
+      },
+      "last_seen_at": "2026-05-10T10:53:10.928405+00:00",
+      "occurrences": 1,
+      "reason": "leg_not_filled:spot:ETH/BTC:buy:canceled:filled=0",
+      "recommendation": "Review leg marketability, orderbook depth, and unwind evidence before another demo window.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|market_data_failure|market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT": {
+      "category": "market_data_failure",
+      "dedupe_key": "triangular-multi-route|demo|market_data_failure|market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T03:18:07.331585+00:00",
+      "improved_at": "2026-05-11T03:26:34.711414+00:00",
+      "issue_id": "ri-8f034a701f5e",
+      "last_context": {
+        "cycle": 3,
+        "decision": "skipped",
+        "message": "OKX Demo Trading skipped because preflight market data failed.",
+        "net_profit": "0",
+        "selected_opportunity_id": "okx-demo-triangular"
+      },
+      "last_seen_at": "2026-05-11T03:25:07.444702+00:00",
+      "occurrences": 3,
+      "reason": "market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
+      "recommendation": "Wait for healthy market data or reduce polling before rerunning.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|pnl_out_of_tolerance|pnl_validation_failed": {
+      "category": "pnl_out_of_tolerance",
+      "dedupe_key": "triangular-multi-route|demo|pnl_out_of_tolerance|pnl_validation_failed",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-10T10:53:10.926618+00:00",
+      "improved_at": "2026-05-10T10:53:30.584404+00:00",
+      "issue_id": "ri-d004b4da0097",
+      "last_context": {
+        "cycle": 10,
+        "decision": "executed",
+        "message": "OKX Demo Trading execution completed; orders were filled or canceled under lifecycle controls.",
+        "net_profit": "1.649430",
+        "selected_opportunity_id": "okx-demo-triangular"
+      },
+      "last_seen_at": "2026-05-10T10:53:10.928405+00:00",
+      "occurrences": 10,
+      "reason": "pnl_validation_failed",
+      "recommendation": "Investigate account-equity delta versus order cash-flow before trusting the PnL sample.",
+      "severity": "critical",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+      "category": "preflight_not_profitable",
+      "dedupe_key": "triangular-multi-route|demo|preflight_not_profitable|demo_preflight_not_profitable",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T11:43:55.127501+00:00",
+      "improved_at": "2026-05-11T12:13:44.813640+00:00",
+      "issue_id": "ri-5aadbdab9f8d",
+      "last_context": {
+        "cycle": 1,
+        "decision": "skipped",
+        "message": "OKX Demo Trading execution skipped by preflight profitability gate.",
+        "net_profit": "-0.021160",
+        "selected_opportunity_id": "okx-demo-triangular"
+      },
+      "last_seen_at": "2026-05-11T12:04:32.783830+00:00",
+      "occurrences": 2,
+      "reason": "demo_preflight_not_profitable",
+      "recommendation": "Do not force demo orders; wait for a profitable preflight or improve scanner pricing.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|runtime_guard_cooldown|market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT": {
+      "category": "runtime_guard_cooldown",
+      "dedupe_key": "triangular-multi-route|demo|runtime_guard_cooldown|market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T03:17:47.634717+00:00",
+      "improved_at": "2026-05-11T03:24:53.027453+00:00",
+      "issue_id": "ri-a95fd3d3a6f5",
+      "last_context": {
+        "cooldown_until": "2026-05-11T03:22:27.929257+00:00",
+        "last_net_profit": "0"
+      },
+      "last_seen_at": "2026-05-11T03:20:59.180411+00:00",
+      "occurrences": 2,
+      "reason": "market_data_error:SafetyError: Unable to fetch OKX demo price for BTC/USDT",
+      "recommendation": "Respect the runtime guard cooldown and inspect the last failure reason.",
+      "severity": "critical",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    },
+    "triangular-multi-route|demo|validation_failed|runtime_guard_cooldown": {
+      "category": "validation_failed",
+      "dedupe_key": "triangular-multi-route|demo|validation_failed|runtime_guard_cooldown",
+      "execution_mode": "demo",
+      "first_seen_at": "2026-05-11T03:20:59.180212+00:00",
+      "improved_at": "2026-05-11T03:24:53.027453+00:00",
+      "issue_id": "ri-514b732af535",
+      "last_context": {
+        "status": "Fail"
+      },
+      "last_seen_at": "2026-05-11T03:20:59.180411+00:00",
+      "occurrences": 1,
+      "reason": "runtime_guard_cooldown",
+      "recommendation": "Review this issue before the next strategy execution.",
+      "severity": "warning",
+      "status": "improved",
+      "strategy_name": "triangular-multi-route"
+    }
+  },
+  "recent_runs": [
+    {
+      "created_at": "2026-05-14T04:01:32.243576+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "demo",
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:demo",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_demo_window",
+      "summary": {
+        "cycles_completed": 3,
+        "executed": 3,
+        "execution_mode": "demo",
+        "net_profit": "0.600680",
+        "operation": "strategy_validate_demo_window",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-13T08:35:23.958281+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "demo"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:demo"
+      ],
+      "operation": "strategy_run",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": null,
+        "execution_mode": "demo",
+        "net_profit": "0.111501",
+        "operation": "strategy_run",
+        "run_completed": true,
+        "skipped": null,
+        "validation_status": null
+      }
+    },
+    {
+      "created_at": "2026-05-12T06:13:18.096421+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 1,
+        "execution_mode": "paper",
+        "net_profit": "3.6492041591681663667266546",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Pass"
+      }
+    },
+    {
+      "created_at": "2026-05-12T06:13:18.089786+00:00",
+      "observed_issue_count": 27,
+      "observed_modes": [
+        "demo"
+      ],
+      "observed_strategy_modes": [
+        "cross-exchange:demo",
+        "funding-carry-hedged:demo",
+        "futures-perp-basis:demo",
+        "momentum-rotation:demo",
+        "spot-perp-carry:demo",
+        "trend-breakout:demo",
+        "triangular-multi-route:demo"
+      ],
+      "operation": "strategy_retrospective",
+      "summary": {
+        "execution_mode": "demo",
+        "journal_events": 50
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:51:18.910123+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "demo"
+      ],
+      "observed_strategy_modes": [
+        "trend-breakout:demo"
+      ],
+      "operation": "strategy_run",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": null,
+        "execution_mode": "demo",
+        "net_profit": "0",
+        "operation": "strategy_run",
+        "run_completed": true,
+        "skipped": null,
+        "validation_status": null
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:51:00.804468+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "demo"
+      ],
+      "observed_strategy_modes": [
+        "trend-breakout:demo"
+      ],
+      "operation": "strategy_run",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": null,
+        "execution_mode": "demo",
+        "net_profit": "0.000000",
+        "operation": "strategy_run",
+        "run_completed": true,
+        "skipped": null,
+        "validation_status": null
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:50:23.405953+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "trend-breakout:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 1,
+        "execution_mode": "paper",
+        "net_profit": "1.174961",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Pass"
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:30:31.612263+00:00",
+      "observed_issue_count": 2,
+      "observed_modes": [
+        "demo",
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "momentum-rotation:demo",
+        "momentum-rotation:paper"
+      ],
+      "operation": "strategy_validate_demo_window",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 1,
+        "execution_mode": "demo",
+        "net_profit": "-0.032849",
+        "operation": "strategy_validate_demo_window",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:29:46.281047+00:00",
+      "observed_issue_count": 2,
+      "observed_modes": [
+        "demo",
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "trend-breakout:demo",
+        "trend-breakout:paper"
+      ],
+      "operation": "strategy_validate_demo_window",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 1,
+        "execution_mode": "demo",
+        "net_profit": "-0.033016",
+        "operation": "strategy_validate_demo_window",
+        "run_completed": true,
+        "skipped": 0,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T16:28:34.558373+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "directional-all:paper",
+        "mean-reversion-spot:paper",
+        "momentum-rotation:paper",
+        "orderbook-imbalance-scalp:paper",
+        "trend-breakout:paper",
+        "volatility-squeeze-breakout:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 2,
+        "execution_mode": "paper",
+        "net_profit": "4.134961",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 3,
+        "validation_status": "Pass"
+      }
+    },
+    {
+      "created_at": "2026-05-11T15:03:47.005508+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:53:57.006718+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:43:50.867655+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:33:51.894605+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:23:31.502926+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:13:25.358546+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T14:03:28.592091+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T13:53:33.857033+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T13:43:25.526134+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    },
+    {
+      "created_at": "2026-05-11T13:33:30.629636+00:00",
+      "observed_issue_count": 1,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "spot-perp-carry:paper",
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 0,
+        "execution_mode": "paper",
+        "net_profit": "0",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 5,
+        "validation_status": "Needs More Samples"
+      }
+    }
+  ],
+  "updated_at": "2026-05-14T04:01:32.243576+00:00",
+  "version": 1
+}

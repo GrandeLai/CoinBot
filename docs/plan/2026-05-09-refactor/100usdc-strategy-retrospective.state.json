@@ -1,0 +1,135 @@
+{
+  "issues": {},
+  "recent_runs": [
+    {
+      "created_at": "2026-05-14T03:40:34.377859+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_run",
+      "summary": {
+        "cycles_completed": 28,
+        "executed": null,
+        "execution_mode": "paper",
+        "net_profit": null,
+        "operation": "strategy_run",
+        "run_completed": true,
+        "skipped": null,
+        "validation_status": null
+      }
+    },
+    {
+      "created_at": "2026-05-14T03:40:18.890523+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "mean-reversion-spot:paper",
+        "momentum-rotation:paper",
+        "orderbook-imbalance-scalp:paper",
+        "spot-perp-carry:paper",
+        "trend-breakout:paper",
+        "triangular-multi-route:paper",
+        "volatility-squeeze-breakout:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 3,
+        "executed": 21,
+        "execution_mode": "paper",
+        "net_profit": "27.29429834081243452801976886",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 9,
+        "validation_status": "Pass"
+      }
+    },
+    {
+      "created_at": "2026-05-13T08:11:56.081664+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "mean-reversion-spot:paper",
+        "momentum-rotation:paper",
+        "orderbook-imbalance-scalp:paper",
+        "spot-perp-carry:paper",
+        "trend-breakout:paper",
+        "triangular-multi-route:paper",
+        "volatility-squeeze-breakout:paper"
+      ],
+      "operation": "strategy_retrospective",
+      "summary": {
+        "execution_mode": "paper",
+        "journal_events": 50
+      }
+    },
+    {
+      "created_at": "2026-05-13T08:10:55.048616+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "triangular-multi-route:paper"
+      ],
+      "operation": "strategy_run",
+      "summary": {
+        "cycles_completed": 28,
+        "executed": null,
+        "execution_mode": "paper",
+        "net_profit": null,
+        "operation": "strategy_run",
+        "run_completed": true,
+        "skipped": null,
+        "validation_status": null
+      }
+    },
+    {
+      "created_at": "2026-05-13T08:10:31.851560+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "mean-reversion-spot:paper",
+        "momentum-rotation:paper",
+        "orderbook-imbalance-scalp:paper",
+        "spot-perp-carry:paper",
+        "trend-breakout:paper",
+        "triangular-multi-route:paper",
+        "volatility-squeeze-breakout:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 3,
+        "executed": 21,
+        "execution_mode": "paper",
+        "net_profit": "27.29429834081243452801976886",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 9,
+        "validation_status": "Pass"
+      }
+    }
+  ],
+  "updated_at": "2026-05-14T03:40:34.377859+00:00",
+  "version": 1
+}

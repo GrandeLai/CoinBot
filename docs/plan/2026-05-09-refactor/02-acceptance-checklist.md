@@ -1,0 +1,196 @@
+# Crypto Assistant Refactor Acceptance Checklist
+
+## Required Files
+
+- [x] `AGENTS.md`
+- [x] `CLAUDE.md`
+- [x] `docs/plan/2026-05-09-refactor/00-refactor-spec.md`
+- [x] `docs/plan/2026-05-09-refactor/01-task-checklist.md`
+- [x] `docs/plan/2026-05-09-refactor/02-acceptance-checklist.md`
+- [x] `docs/plan/2026-05-09-refactor/03-traceability-matrix.md`
+- [x] `docs/plan/2026-05-09-refactor/04-phase-0-report.md`
+- [x] `docs/plan/2026-05-09-refactor/05-phase-1-report.md`
+- [x] `docs/plan/2026-05-09-refactor/06-phase-2-report.md`
+- [x] `docs/plan/2026-05-09-refactor/07-phase-3-report.md`
+- [x] `docs/plan/2026-05-09-refactor/08-phase-4-report.md`
+- [x] `docs/plan/2026-05-09-refactor/09-phase-5-report.md`
+- [x] `docs/plan/2026-05-09-refactor/10-phase-6-report.md`
+- [x] `docs/plan/2026-05-09-refactor/11-phase-7-report.md`
+- [x] `docs/plan/2026-05-09-refactor/12-phase-8-report.md`
+- [x] `docs/plan/2026-05-09-refactor/13-phase-9-report.md`
+- [x] `docs/plan/2026-05-09-refactor/28-strategy-retrospective.md`
+- [x] `docs/plan/2026-05-09-refactor/28-strategy-retrospective.state.json`
+- [x] `docs/plan/2026-05-09-refactor/29-strategy-retrospective-system-report.md`
+- [x] `docs/plan/2026-05-09-refactor/30-strategy-optimization-pressure-report.md`
+- [x] `docs/plan/2026-05-09-refactor/35-rolling-validation-report-2026-05-11.md`
+- [x] `docs/plan/2026-05-09-refactor/38-okx-read-only-market-compare-2026-05-11.md`
+- [x] `docs/plan/2026-05-09-refactor/39-okx-demo-validation-2026-05-11.md`
+- [x] `docs/plan/2026-05-09-refactor/40-pnl-reconciliation-audit-2026-05-11.md`
+- [x] `docs/plan/2026-05-09-refactor/41-demo-preflight-fill-price-optimization-2026-05-11.md`
+- [x] `docs/plan/2026-05-09-refactor/45-strategy-evolution.md`
+- [x] `docs/plan/2026-05-09-refactor/45-strategy-evolution.state.json`
+- [x] `docs/plan/2026-05-09-refactor/46-strategy-evolution-system-report.md`
+- [x] `docs/plan/2026-05-09-refactor/47-strategy-evolution-followups-report.md`
+- [x] `docs/plan/2026-05-09-refactor/48-candle-regime-candidate-backtest-report.md`
+- [x] `docs/plan/2026-05-09-refactor/49-readonly-market-config-diagnostics-report.md`
+- [x] `docs/plan/2026-05-09-refactor/50-opportunity-density-route-discovery-report.md`
+- [x] `docs/plan/2026-05-09-refactor/99-final-acceptance-report.md`
+- [x] `configs/config.example.yaml`
+- [x] `.env.example`
+
+## Core Loop
+
+- [x] Configuration loads from YAML.
+- [x] Environment variables override configuration.
+- [x] `.env` is supported for local development.
+- [x] Mock exchange works offline.
+- [x] Market ticker works offline.
+- [x] Market orderbook works offline.
+- [x] Arbitrage scan produces deterministic opportunities.
+- [x] Arbitrage scan includes execution-quality costs: spread persistence, depth-weighted fill, fee tiers, transfer cost, latency drift, and funding carry.
+- [x] Risk manager approves/blocks according to limits.
+- [x] Dry-run execution simulates orders without live trading.
+- [x] Paper trading ledger records simulated execution.
+- [x] Report generation returns machine-readable output.
+- [x] Workflow route connects mock research, backtest, paper trading, sandbox readiness, live readiness gate, and report output.
+- [x] Agent live-readiness gate checks explicit autonomous trading controls without sending real orders.
+- [x] OKX spot broker dispatch is wired behind agent live-trading gates and covered by offline fake-provider tests.
+- [x] OKX exchange adapter maps ticker, orderbook, balances, funding rates, and spot/perp quotes into Decimal domain models with fake-client tests.
+- [x] Optional CCXT exchange adapter maps ticker, orderbook, balances, funding rates, instruments, spot/perp quotes, and futures basis into Decimal domain models with fake-client tests.
+- [x] Cross-exchange scanner can scan enabled CCXT-backed exchange pairs offline with fake clients while preserving the default mock `test-opportunity` path.
+- [x] OKX sandbox-check command performs non-order sandbox validation and reports `live_orders_sent=false`.
+- [x] OKX demo and live modes use separate configuration files: `configs/okx.demo.example.yaml` and `configs/okx.live.example.yaml`.
+- [x] OKX demo and live API keys are read from separate local dotenv files: `.env.okx.demo` and `.env.okx.live`.
+- [x] Operation validation hub lists every registered live-capable operation with a matching demo config and demo command.
+- [x] Strategy runtime registers all four arbitrage strategies for controlled long-running paper execution.
+- [x] Strategy runtime applies position caps, max open order controls, order TTL, cancel/reprice lifecycle plans, journaling, review, and advisory learning.
+- [x] OKX demo strategy runtime preflights profitability before sending canary orders, stops longer loops on demo stop-loss/drawdown, and reconciles cash-flow PnL against account-equity delta.
+- [x] OKX demo strategy execution fetches exchange fill receipts from `fills-history` and records receipt completeness, fee expense, and fill PnL in `pnl_validation.exchange_receipts`.
+- [x] OKX demo profile supports controlled stage-1 position increase through `demo_order_size_multiplier=2` while keeping live trading disabled.
+- [x] OKX demo spot limit prices use orderbook best bid/ask when available plus configurable `demo_limit_price_buffer_pct`, so triangular preflight and execution share more realistic marketable prices.
+- [x] Post-R052 OKX demo 10-cycle validation passed with orderbook-based pricing: only `triangular-multi-route` executed, `executed=10`, `skipped=40`, `net_profit=15.863852`, `max_drawdown_usdt=0`, complete receipts, PnL within tolerance, residual inventory within tolerance, and no open spot orders, swap orders, or swap positions.
+- [x] Stage-1 2x OKX demo continuous sample window passed 10 cycles: only `triangular-multi-route` executed, total executed PnL was `16.549322 USDT`, all receipts and residual-inventory checks were complete/within tolerance, and no open orders or swap positions remained.
+- [x] Strategy runtime persists consecutive blocked runs and negative executions, then applies cooldown before future strategy cycles in the same mode.
+- [x] Strategy runtime also persists market-data and exchange rate-limit failure counters, then applies cooldown before longer OKX demo runs can keep hammering a bad market/API state.
+- [x] `strategy guard-status --json` exposes stateful runtime guard status for Agent/operator review.
+- [x] Strategy retrospective reads the journal and guard state, reports historical unresolved issues before each run/validation, and updates the living retrospective document after execution.
+- [x] Strategy retrospective is advisory only: it does not place orders, change strategy parameters, enable demo/live gates, or block OKX demo sampling by itself.
+- [x] Strategy retrospective emits `optimization_pressure` for repeated issues, including observed net PnL, break-even gap, strategy-specific action, config fields to review, and non-negotiable guardrails.
+- [x] Strategy score and portfolio selection consume repeated OKX demo `preflight_not_profitable` pressure and can temporarily block affected strategies below the score floor without lowering safety gates.
+- [x] Demo-window validation fast-fails before runner execution when every requested strategy is already in runtime guard cooldown, avoiding empty demo cycles and extra open-risk network calls.
+- [x] Retrospective refresh treats older transient market-data/rate-limit/preflight failures as improved when a later profitable execution exists for the same strategy and mode.
+- [x] Strategy evolution ranks recent simulated paper/demo evidence, promotes stronger strategies, keeps insufficient-sample strategies on watchlist, softly archives persistently unprofitable strategies, and marks later-profitable archived strategies as revival candidates.
+- [x] Strategy score and portfolio selection block `strategy_archived_by_evolution` without deleting code or weakening demo/live gates.
+- [x] `strategy run`, `strategy validate-local`, and `strategy validate-demo-window` include `evolution_after` and update the evolution report/state after execution.
+- [x] Strategy evolution emits completed-candle-derived `market_regime` tags plus advisory `parameter_candidates` for isolated simulated validation.
+- [x] `strategy candidate-backtest --json` materializes candidate parameter overrides in temporary config copies, compares baseline/candidate metrics, isolates runtime paths, and reports no order dispatch.
+- [x] `strategy revival-window --json` selects only `revive_candidate` strategies, requires local validation first, and attempts OKX demo validation only after the demo safety gate passes.
+- [x] Latest OKX demo optimization loop ran `triangular-multi-route` for 3 cycles after local validation and natural cooldown expiry: `executed=3`, `wins=3`, `net_profit=0.749803`, `max_drawdown_usdt=0`, complete receipts, residual inventory within tolerance, and no open orders or positions.
+- [x] Latest same-size OKX demo validation loop ran `triangular-multi-route` for 10 cycles: `executed=10`, `wins=10`, `net_profit=2.629326`, `max_drawdown_usdt=0`, complete receipts, PnL/residual checks within tolerance, and no open orders or positions.
+- [x] Retrospective updates only mark issues improved for observed strategy/execution-mode pairs, so unrelated blocked strategies remain visible after a targeted triangular run.
+- [x] Rolling validation report summarizes recent journal evidence including executed/skipped counts, realized PnL, skipped preflight PnL, drawdown, receipt failures, PnL tolerance failures, residual-inventory failures, reason counts, and per-strategy recommendations.
+- [x] Rolling validation report now separates expected preflight PnL, actual order cash-flow PnL, account equity delta, account reconciliation gap, and expected-vs-actual gap.
+- [x] Executed demo journal events now preserve the approved preflight estimate for future expected-vs-actual promotion evidence.
+- [x] Latest PnL reconciliation audit found no positive-cash-flow/negative-account-equity events in the latest OKX demo window, but marks older executed demo events without preflight estimates as unsuitable for full expected-vs-actual promotion evidence.
+- [x] Demo preflight now separates marketable-limit protection price from top-of-book expected fill price while preserving positive-PnL, local-validation, risk, receipt, residual, and no-open-risk gates.
+- [x] Latest post-optimization OKX demo window executed one triangular canary with `net_profit=0.026190 USDT`, complete receipts, PnL reconciliation within tolerance, residual inventory within tolerance, and no post-run open orders or positions.
+- [x] Carry/basis strategy scans include diagnostics with candidate net PnL, minimum required PnL, break-even gap, depth sufficiency, and cost components so filtered candidates can be optimized offline.
+- [x] Carry/basis strategy scans enforce configurable quality gates for minimum funding annualized percentage, maximum basis hedge cost percentage, minimum spot-perp basis percentage, and minimum futures-perp basis percentage.
+- [x] Strategy market comparison provides a read-only mock baseline versus target-exchange scan before OKX demo preflight, with `orders_sent=false`, no journal writes, and no retrospective mutation.
+- [x] Strategy opportunity report provides read-only opportunity-density metrics from the journal, including scan count, candidate count, skip reasons, expected-vs-actual gap, account-equity delta, route/symbol distribution, observation-pool gaps, and demo size-stage readiness.
+- [x] Triangular route discovery reads spot instruments, keeps configured routes as priority routes, expands to accepted instrument-driven routes, and reports filtered routes with reasons without sending orders.
+- [x] Triangular multi-route scanning can use `--route-mode discovered` and records multi-level orderbook expected fill prices, submitted limit prices, fee/slippage estimates, depth consumed, and min-size adjustments.
+- [x] Latest OKX read-only comparison found no current demo-preflight candidates across the five configured strategies; non-triangular strategies were blocked by funding/basis/net-profit diagnostics rather than by forced demo orders.
+- [x] Latest bounded OKX Demo Trading validation window completed 3 cycles with `executed=3`, `skipped=12`, `net_profit=0.327664`, `win_rate_pct=100.00`, `max_drawdown_usdt=0`, and no post-run open orders or swap positions.
+- [x] Three-layer validation is explicit: local paper validation, OKX Demo Trading validation window, and advisory live-canary promotion status.
+- [x] Demo-window validation checks provider demo mode, no live orders, PnL reconciliation, receipt completeness, and post-run no-open-order/no-position evidence.
+- [x] Live-canary promotion is still disabled by default through `strategy_runtime.validation_allow_live_canary=false` plus existing trading/agent live gates.
+- [x] Agent live-readiness and execute-live accept externally generated opportunity JSON via `--opportunity-file`.
+- [x] CLI emits JSON for machine-readable commands.
+- [x] Unit tests pass.
+- [x] Integration tests pass.
+- [x] E2E dry-run test passes.
+
+## CLI Commands
+
+- [x] `crypto-assistant --help`
+- [x] `crypto-assistant status`
+- [x] `crypto-assistant config validate --config configs/config.example.yaml`
+- [x] `crypto-assistant exchange list`
+- [x] `crypto-assistant exchange ping --config configs/config.example.yaml --exchange mock --json`
+- [x] `crypto-assistant exchange sandbox-check --config configs/okx.demo.example.yaml --exchange okx --symbol BTC/USDT --json`
+- [x] `crypto-assistant market ticker --config configs/config.example.yaml --exchange mock --symbol BTC/USDT --json`
+- [x] `crypto-assistant market orderbook --config configs/config.example.yaml --exchange mock --symbol BTC/USDT --json`
+- [x] `crypto-assistant market candles --config configs/okx.demo.example.yaml --exchange okx --symbol BTC/USDT --bar 15m --limit 5 --json`
+- [x] `crypto-assistant account balance --config configs/config.example.yaml --exchange mock --json`
+- [x] `crypto-assistant arbitrage scan --type cross-exchange --symbol BTC/USDT --json`
+- [x] `crypto-assistant arbitrage scan --type triangular --exchange mock --json`
+- [x] `crypto-assistant arbitrage scan --type funding-rate --json`
+- [x] `crypto-assistant arbitrage scan --type spot-perp --symbol BTC/USDT --json`
+- [x] `crypto-assistant arbitrage execute --opportunity-id test-opportunity --dry-run --json`
+- [x] `crypto-assistant agent live-readiness --config configs/config.example.yaml --opportunity-id test-opportunity --json`
+- [x] `crypto-assistant agent live-readiness --config configs/config.example.yaml --opportunity-file okx-opportunity.json --json`
+- [x] `crypto-assistant agent execute-live --config configs/config.example.yaml --opportunity-id test-opportunity --json` blocks by default with a non-zero safety error.
+- [x] `crypto-assistant agent execute-live --config configs/config.example.yaml --opportunity-file okx-opportunity.json --json` blocks by default before provider dispatch.
+- [x] `crypto-assistant agent operation-catalog --json`
+- [x] `crypto-assistant strategy list --json`
+- [x] `crypto-assistant strategy catalog --json`
+- [x] `crypto-assistant strategy scan --strategy all --symbol BTC/USDT --json`
+- [x] `crypto-assistant strategy discover-routes --config configs/config.example.yaml --exchange mock --quote USDT --json`
+- [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy triangular-multi-route --exchange mock --route-mode discovered --json`
+- [x] `crypto-assistant strategy opportunity-report --config configs/config.example.yaml --window 24h --json`
+- [x] `crypto-assistant strategy scan --strategy directional-all --symbol BTC/USDT --json`
+- [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy spot-perp-carry --symbol BTC/USDT --json` includes `diagnostics`.
+- [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --symbol BTC/USDT --json` passes after carry/basis quality gates.
+- [x] `crypto-assistant strategy score --strategy all --json`
+- [x] `crypto-assistant strategy score --strategy directional-all --json`
+- [x] `crypto-assistant strategy market-compare --config configs/okx.demo.example.yaml --strategy all --symbol BTC/USDT --target-exchange okx --json`
+- [x] `crypto-assistant strategy portfolio-status --json`
+- [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy all --max-cycles 1 --interval-seconds 0 --execution-mode paper --json`
+- [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy directional-all --max-cycles 1 --interval-seconds 0 --execution-mode paper --json`
+- [x] `crypto-assistant strategy run --config configs/okx.demo.example.yaml --strategy all --max-cycles 1 --interval-seconds 0 --execution-mode demo --json` runs local validation, demo preflight, skips non-profitable canary paths, stops/unwinds unfilled sequences, and records PnL plus residual-inventory reconciliation.
+- [x] Directional OKX demo execution now opens a managed long-only spot position, persists it under `directional.position_state_path`, holds when no exit trigger is met, and closes on take-profit/stop-loss/time-limit triggers.
+- [x] Managed open directional demo positions are reported as open lifecycle state, not counted as realized losses in `strategy validation-report`.
+- [x] OKX demo smoke test opened one managed `trend-breakout` BTC/USDT spot position (`0.0002 BTC`, `16.332262 USDT`) after local validation and the next run returned `directional_position_hold` without sending a duplicate order.
+- [x] Latest OKX demo run confirms `pnl_validation.exchange_receipts.complete=true`, `pnl_validation.within_tolerance=true`, and `pnl_validation.residual_inventory_within_tolerance=true` for the executed triangular canary.
+- [x] Latest post-R052 OKX demo-window run passed 10 cycles with `executed=10`, `skipped=40`, `net_profit=15.863852`, `win_rate_pct=100.00`, `max_drawdown_usdt=0`, `max_residual_inventory_usdt=0.058822`, and post-run `open_spot_orders=0`, `open_swap_orders=0`, `swap_positions=0`.
+- [x] Latest OKX demo-window run passed 10 cycles with `executed=10`, `skipped=40`, `net_profit=16.549322`, `win_rate_pct=100.00`, `max_drawdown_usdt=0`, `max_residual_inventory_usdt=0.025127`, and post-run `open_spot_orders=0`, `open_swap_orders=0`, `swap_positions=0`.
+- [x] Latest 2x continuous sample command `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy all --cycles 10 --json` completed with `demo_window_validation.status=Pass`, `net_profit=16.549322`, and `max_drawdown_usdt=0`.
+- [x] Latest targeted command `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy triangular-multi-route --cycles 10 --symbol BTC/USDT --json` completed with `demo_window_validation.status=Pass`, `executed=10`, `net_profit=2.629326`, and `max_drawdown_usdt=0`.
+- [x] `crypto-assistant strategy review --config configs/config.example.yaml --json`
+- [x] `crypto-assistant strategy review --config configs/okx.demo.example.yaml --execution-mode demo --json`
+- [x] `crypto-assistant strategy guard-status --config configs/config.example.yaml --execution-mode paper --json`
+- [x] `crypto-assistant strategy retrospective --config configs/okx.demo.example.yaml --json`
+- [x] `crypto-assistant strategy evolve --config configs/config.example.yaml --strategy all --execution-mode paper --limit 50 --json`
+- [x] `crypto-assistant strategy candidate-backtest --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --limit 50 --json`
+- [x] `crypto-assistant strategy revival-window --config configs/config.example.yaml --strategy all --cycles 1 --symbol BTC/USDT --json`
+- [x] `crypto-assistant strategy validation-report --config configs/okx.demo.example.yaml --execution-mode demo --strategy all --limit 50 --json`
+- [x] `crypto-assistant strategy validation-report --config configs/config.example.yaml --execution-mode paper --strategy directional-all --limit 50 --json`
+- [x] `crypto-assistant strategy validate-demo --config configs/okx.demo.example.yaml --strategy all --symbol BTC/USDT --allow-account-mode-switch --json` exists, supports `--help`, requires local validation first, and validates all demo-supported allowlisted paths including `funding-carry-hedged`, `spot-perp-carry`, and `futures-perp-basis`.
+- [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --json`
+- [x] `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy all --cycles 10 --json`
+- [x] `crypto-assistant strategy promotion-status --config configs/okx.demo.example.yaml --strategy all --json`
+- [x] `crypto-assistant backtest run --config configs/config.example.yaml --json`
+- [x] `crypto-assistant report generate --type daily --json`
+- [x] `crypto-assistant workflow run --config configs/config.example.yaml --symbol BTC/USDT --json`
+
+## Safety
+
+- [x] Default live trading is disabled.
+- [x] Default dry-run is enabled.
+- [x] Default mock exchange is enabled.
+- [x] Sandbox readiness blocks if execution quality is not approved.
+- [x] Real trading requires explicit config and risk approval.
+- [x] Autonomous agent live trading additionally requires explicit agent config, allowlisted strategy/exchange, operator id, credentials, execution-quality approval, audit logging, and kill switch not enabled.
+- [x] Strategy retrospective records and escalates repeated execution or validation issues without weakening runtime guards or bypassing local-first/demo gates.
+- [x] Strategy evolution is simulation-only: it sends no orders, enables no live trading, stores only soft archive state, and requires fresh simulated evidence before a strategy can return from archive.
+- [x] Strategy revival windows are demo-only and local-first; they never target live trading and do nothing when there are no current revival candidates.
+- [x] Directional strategies are long-only spot, local/backtest/paper first, live-unsupported, and `orderbook-imbalance-scalp` is demo-disabled.
+- [x] No hardcoded API keys, secrets, passphrases, or tokens.
+- [x] `.env` is ignored and not required for tests.
+- [x] CLI/log/report output redacts credentials.
+- [x] Safety logic is covered by tests.
+
+## Known External Blockers
+
+- [x] OKX Demo Trading swap order validation blocker resolved. The demo account now reports `acctLv=3`, and `funding-rate` plus `spot-perp` swap submit/cancel validation passed with `live_orders_sent=false`.

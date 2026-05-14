@@ -1,0 +1,51 @@
+[project]
+name = "coinbot-api"
+version = "0.1.0"
+description = "CoinBot crypto-only FastAPI backend for OKX trading, derivatives analytics, advisor, whale and unlock research"
+requires-python = ">=3.12"
+dependencies = [
+    "coinbot-common",
+    "cryptography>=42.0.0",
+    "fastapi>=0.115.0",
+    "httpx>=0.27.0",
+    "keyring>=25.0.0",
+    "loguru>=0.7.0",
+    "numpy>=1.26.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "python-dotenv>=1.0.0",
+    "PyYAML>=6.0.0",
+    "uvicorn[standard]>=0.30.0",
+]
+
+[project.scripts]
+crypto-assistant = "trading_assistant.cli.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/coinbot_api", "src/trading_assistant"]
+
+[tool.uv]
+package = true
+
+[tool.uv.sources]
+coinbot-common = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "mypy>=1.20.2",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.15.12",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

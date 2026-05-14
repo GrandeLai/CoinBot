@@ -1,0 +1,39 @@
+[project]
+name = "coinbot-common"
+version = "0.1.0"
+description = "CoinBot shared Python infrastructure for crypto market data and configuration"
+requires-python = ">=3.12"
+dependencies = [
+    "duckdb>=1.1.0",
+    "httpx>=0.27.0",
+    "keyring>=25.0.0",
+    "loguru>=0.7.0",
+    "polars>=0.20.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["coinbot_common"]
+
+[tool.uv]
+package = true
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

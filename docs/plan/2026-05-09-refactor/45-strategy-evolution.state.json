@@ -1,0 +1,149 @@
+{
+  "market_regime": {
+    "sample_count": 10,
+    "source": "journal",
+    "strategy_tags": {
+      "triangular-multi-route": "unknown"
+    },
+    "tag": "unknown",
+    "tag_counts": {
+      "unknown": 10
+    },
+    "volatility": "unknown"
+  },
+  "parameter_candidates": [],
+  "strategies": {
+    "cross-exchange": {
+      "action": "promote",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "3.418704259148170365926814156",
+      "reason_codes": [
+        "simulated_profitability_passed"
+      ],
+      "samples": 12,
+      "status": "active",
+      "strategy_name": "cross-exchange",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "funding-carry-hedged": {
+      "action": "promote",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "4.35500",
+      "reason_codes": [
+        "simulated_profitability_passed"
+      ],
+      "samples": 13,
+      "status": "active",
+      "strategy_name": "funding-carry-hedged",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "futures-perp-basis": {
+      "action": "promote",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "4.135422885572139303482587065",
+      "reason_codes": [
+        "simulated_profitability_passed"
+      ],
+      "samples": 13,
+      "status": "active",
+      "strategy_name": "futures-perp-basis",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "mean-reversion-spot": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "0",
+      "reason_codes": [
+        "no_simulated_samples"
+      ],
+      "samples": 0,
+      "status": "watchlist",
+      "strategy_name": "mean-reversion-spot",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "0"
+    },
+    "momentum-rotation": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "2.960000",
+      "reason_codes": [
+        "minimum_samples_not_met:1<5"
+      ],
+      "samples": 1,
+      "status": "watchlist",
+      "strategy_name": "momentum-rotation",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "orderbook-imbalance-scalp": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "0",
+      "reason_codes": [
+        "no_simulated_samples"
+      ],
+      "samples": 0,
+      "status": "watchlist",
+      "strategy_name": "orderbook-imbalance-scalp",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "0"
+    },
+    "spot-perp-carry": {
+      "action": "promote",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "4.938856228754249150169966003",
+      "reason_codes": [
+        "simulated_profitability_passed"
+      ],
+      "samples": 13,
+      "status": "active",
+      "strategy_name": "spot-perp-carry",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "trend-breakout": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "2.349922",
+      "reason_codes": [
+        "minimum_samples_not_met:2<5"
+      ],
+      "samples": 2,
+      "status": "watchlist",
+      "strategy_name": "trend-breakout",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "triangular-multi-route": {
+      "action": "promote",
+      "evidence_mode": "demo",
+      "net_profit_usdt": "2.164242",
+      "reason_codes": [
+        "simulated_profitability_passed"
+      ],
+      "samples": 10,
+      "status": "champion",
+      "strategy_name": "triangular-multi-route",
+      "updated_at": "2026-05-14T04:01:32.249039+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "volatility-squeeze-breakout": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "0",
+      "reason_codes": [
+        "no_simulated_samples"
+      ],
+      "samples": 0,
+      "status": "watchlist",
+      "strategy_name": "volatility-squeeze-breakout",
+      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "win_rate_pct": "0"
+    }
+  },
+  "updated_at": "2026-05-14T04:01:32.249039+00:00",
+  "version": 1
+}

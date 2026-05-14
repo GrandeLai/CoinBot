@@ -1,0 +1,391 @@
+"""Unit tests for strategy platform catalog, scoring, and portfolio services."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import replace
+from decimal import Decimal
+from pathlib import Path
+
+from trading_assistant.config.loader import load_settings
+from trading_assistant.config.schema import Settings
+from trading_assistant.exchanges.base import AccountSnapshot, Balance, Exchange, OrderBook, SpotPerpQuote, Ticker, utcnow
+from trading_assistant.exchanges.factory import ExchangeFactory
+from trading_assistant.exchanges.mock import MockExchange
+from trading_assistant.arbitrage.route_discovery import TriangularRouteDiscoveryService
+from trading_assistant.strategies.market_compare import StrategyMarketComparisonService
+from trading_assistant.strategies.opportunity_density import OpportunityDensityService
+from trading_assistant.strategies.platform import StrategyCatalog, StrategyController, StrategyPortfolioService, StrategyScoreService
+from trading_assistant.strategies.registry import StrategyRegistry
+
+
+ROOT = Path(__file__).resolve().parents[3]
+EXAMPLE_CONFIG = ROOT / "configs" / "config.example.yaml"
+
+
+def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -> None:
+    catalog = StrategyCatalog().to_dict()
+    registry = StrategyRegistry()
+
+    names = {strategy["name"] for strategy in catalog["strategies"]}
+
+    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis"}
+    assert catalog["aliases"]["triangular"] == "triangular-multi-route"
+    assert catalog["aliases"]["funding-rate"] == "funding-carry-hedged"
+    assert catalog["aliases"]["spot-perp"] == "spot-perp-carry"
+    assert registry.get("triangular").scanner_type == "triangular-multi-route"
+    assert registry.demo_validation_names()[:5] == [
+        "cross-exchange",
+        "triangular",
+        "funding-carry-hedged",
+        "spot-perp-carry",
+        "futures-perp-basis",
+    ]
+    assert "trend-breakout" in registry.demo_validation_names()
+    assert "orderbook-imbalance-scalp" not in registry.demo_validation_names()
+
+
+def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    controller = StrategyController(settings, ExchangeFactory(settings))
+
+    reports = controller.scan(strategy_name="all", symbol="BTC/USDT")
+
+    assert {report.strategy_name for report in reports} >= {
+        "cross-exchange",
+        "triangular-multi-route",
+        "funding-carry-hedged",
+        "spot-perp-carry",
+        "futures-perp-basis",
+        "trend-breakout",
+        "mean-reversion-spot",
+        "volatility-squeeze-breakout",
+        "momentum-rotation",
+        "orderbook-imbalance-scalp",
+    }
+    assert all(report.status == "active" for report in reports)
+    assert sum(len(report.opportunities) for report in reports) >= 5
+
+
+def test_triangular_route_discovery_expands_and_explains_mock_routes(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+
+    report = TriangularRouteDiscoveryService(settings, ExchangeFactory(settings)).discover(
+        exchange_name="mock",
+        quote="USDT",
+        route_limit=10,
+    )
+    scan = StrategyController(settings, ExchangeFactory(settings)).scan(
+        strategy_name="triangular-multi-route",
+        exchange="mock",
+        route_mode="discovered",
+    )[0]
+
+    accepted_routes = [candidate.route for candidate in report.accepted_routes]
+    filtered_reasons = [reason for candidate in report.filtered_routes for reason in candidate.reasons]
+    assert ["USDT", "BTC", "ETH", "USDT"] in accepted_routes
+    assert ["USDT", "BTC", "SOL", "USDT"] in accepted_routes
+    assert any(reason.startswith("missing_symbol:") for reason in filtered_reasons)
+    assert report.read_only is True
+    assert report.orders_sent is False
+    assert scan.opportunities
+
+
+def test_opportunity_density_report_aggregates_expected_actual_and_break_even_gaps(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    journal_path = Path(settings.strategy_runtime.journal_path)
+    journal_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "event": "strategy_cycle",
+                        "created_at": utcnow().isoformat(),
+                        "strategy_name": "triangular-multi-route",
+                        "execution_mode": "demo",
+                        "decision": "executed",
+                        "opportunities_found": 1,
+                        "selected_opportunity_id": "okx-demo-triangular",
+                        "risk_reasons": [],
+                        "net_profit": "0.12",
+                        "execution": {
+                            "preflight": {"approved": True, "net_pnl_usdt": "0.10"},
+                            "pnl_validation": {
+                                "cash_flow_net_pnl_usdt": "0.12",
+                                "equity_delta_usdt": "0.11",
+                                "exchange_receipts": {"complete": True},
+                                "within_tolerance": True,
+                                "residual_inventory_within_tolerance": True,
+                            },
+                        },
+                    }
+                ),
+                json.dumps(
+                    {
+                        "event": "strategy_cycle",
+                        "created_at": utcnow().isoformat(),
+                        "strategy_name": "spot-perp-carry",
+                        "execution_mode": "demo",
+                        "decision": "skipped",
+                        "opportunities_found": 1,
+                        "selected_opportunity_id": "okx-demo-spot-perp-carry",
+                        "risk_reasons": ["demo_preflight_not_profitable"],
+                        "net_profit": "-0.08",
+                        "execution": {"preflight": {"approved": False, "net_pnl_usdt": "-0.08"}},
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = OpportunityDensityService(settings.strategy_runtime).report(window="24h")
+
+    assert report.read_only is True
+    assert report.orders_sent is False
+    assert report.scan_count == 2
+    assert report.opportunity_count == 2
+    assert report.demo_preflight_candidate_count == 1
+    assert report.executed_count == 1
+    assert report.expected_vs_actual_gap_usdt == Decimal("0.10")
+    assert report.account_equity_delta_usdt == Decimal("0.11")
+    assert report.by_strategy["spot-perp-carry"].break_even_gap_usdt == Decimal("0.08")
+    assert report.demo_size_stage_readiness["stage_1_2x_eligible"] is False
+
+
+def test_strategy_scan_reports_break_even_diagnostics_when_carry_filtered(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.arbitrage.min_net_profit_pct = Decimal("100")
+
+    report = StrategyController(settings, ExchangeFactory(settings)).scan(
+        strategy_name="spot-perp-carry",
+        symbol="BTC/USDT",
+    )[0]
+    card = StrategyScoreService(settings, ExchangeFactory(settings)).score(
+        strategy_name="spot-perp-carry",
+        symbol="BTC/USDT",
+    )[0]
+
+    assert report.opportunities == []
+    assert report.diagnostics["approved"] is False
+    assert "net_profit_below_minimum" in report.diagnostics["reasons"]
+    assert Decimal(str(report.diagnostics["break_even_gap_usdt"])) > 0
+    assert "scan_diagnostic:net_profit_below_minimum" in card.reasons
+    assert any(reason.startswith("scan_break_even_gap_usdt:") for reason in card.reasons)
+
+
+def test_carry_basis_quality_gates_explain_basis_and_hedge_cost_filters(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.arbitrage.spot_perp_min_basis_pct = Decimal("99")
+    settings.arbitrage.funding_max_basis_hedge_cost_pct = Decimal("0.01")
+    controller = StrategyController(settings, ExchangeFactory(settings))
+
+    spot_report = controller.scan(strategy_name="spot-perp-carry", symbol="BTC/USDT")[0]
+    funding_report = controller.scan(strategy_name="funding-carry-hedged", symbol="BTC/USDT")[0]
+
+    assert spot_report.opportunities == []
+    assert "basis_below_minimum" in spot_report.diagnostics["reasons"]
+    assert spot_report.diagnostics["min_basis_pct"] == Decimal("99")
+    funding_candidates = funding_report.diagnostics["candidates"]
+    assert any("basis_hedge_cost_above_maximum" in candidate["reasons"] for candidate in funding_candidates)
+    assert all("basis_hedge_cost_pct" in candidate for candidate in funding_candidates)
+
+
+def test_strategy_market_compare_is_read_only_and_explains_target_delta(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.exchanges["okx"].enabled = True
+    service = StrategyMarketComparisonService(settings, factory_cls=TargetOKXFactory)
+
+    result = service.compare(strategy_name="spot-perp-carry", symbol="BTC/USDT")
+    comparison = result.comparisons[0]
+
+    assert result.read_only is True
+    assert result.orders_sent is False
+    assert result.baseline_exchange == "mock"
+    assert result.target_exchange == "okx"
+    assert comparison.target.exchange == "okx"
+    assert comparison.delta_net_profit_usdt > Decimal("0")
+    assert comparison.verdict == "demo_preflight_candidate"
+    assert "target_has_positive_edge" in comparison.reasons
+
+
+def test_strategy_score_and_portfolio_select_highest_scored_strategies(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.strategy_runtime.portfolio_max_concurrent_strategies = 2
+    settings.strategy_runtime.portfolio_min_score = Decimal("50")
+    factory = ExchangeFactory(settings)
+
+    cards = StrategyScoreService(settings, factory).score(strategy_name="all", symbol="BTC/USDT")
+    status = StrategyPortfolioService(settings, factory).status(symbol="BTC/USDT")
+
+    assert len(cards) >= 5
+    assert all(card.score >= Decimal("0") for card in cards)
+    assert len(status.selected_strategies) == 2
+    assert "triangular-multi-route" in status.selected_strategies
+    assert status.blocked_strategies
+
+
+def test_strategy_score_blocks_cross_exchange_when_sell_asset_is_not_free(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    factory = LockedSellBalanceFactory(settings)
+
+    card = StrategyScoreService(settings, factory).score(strategy_name="cross-exchange", symbol="BTC/USDT")[0]
+
+    assert card.sell_leg_available is False
+    assert "sell_leg_unavailable" in card.reasons
+    assert "sell_leg_no_free_balance:mock_alt:BTC" in card.balance_restrictions
+    assert "balance_locked:mock_alt:BTC" in card.balance_restrictions
+
+
+def test_strategy_score_penalizes_repeated_demo_preflight_pressure(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    state_path = tmp_path / "retrospective.state.json"
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.strategy_runtime.retrospective_state_path = str(state_path)
+    state_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "updated_at": "2026-05-10T00:00:00+00:00",
+                "recent_runs": [],
+                "issues": {
+                    "spot-perp-carry|demo|preflight_not_profitable|demo_preflight_not_profitable": {
+                        "issue_id": "ri-test",
+                        "dedupe_key": "spot-perp-carry|demo|preflight_not_profitable|demo_preflight_not_profitable",
+                        "strategy_name": "spot-perp-carry",
+                        "execution_mode": "demo",
+                        "category": "preflight_not_profitable",
+                        "reason": "demo_preflight_not_profitable",
+                        "severity": "warning",
+                        "status": "open",
+                        "occurrences": 10,
+                        "first_seen_at": "2026-05-10T00:00:00+00:00",
+                        "last_seen_at": "2026-05-10T00:00:00+00:00",
+                        "recommendation": "Review spread and cost thresholds before another demo attempt.",
+                        "last_context": {"net_profit": "-0.258630", "decision": "skipped"},
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    card = StrategyScoreService(settings, ExchangeFactory(settings)).score(
+        strategy_name="spot-perp-carry",
+        symbol="BTC/USDT",
+    )[0]
+
+    assert card.score < settings.strategy_runtime.portfolio_min_score
+    assert "repeated_demo_preflight_not_profitable" in card.reasons
+    assert "demo_break_even_gap_usdt:0.258630" in card.reasons
+
+
+def test_strategy_score_and_portfolio_block_archived_strategy(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    state_path = tmp_path / "evolution.state.json"
+    settings.strategy_runtime.evolution_state_path = str(state_path)
+    state_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "strategies": {
+                    "triangular-multi-route": {
+                        "strategy_name": "triangular-multi-route",
+                        "status": "archived",
+                        "action": "archive",
+                        "reason_codes": ["net_profit_below_threshold"],
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    card = StrategyScoreService(settings, ExchangeFactory(settings)).score(
+        strategy_name="triangular-multi-route",
+        symbol="BTC/USDT",
+    )[0]
+    status = StrategyPortfolioService(settings, ExchangeFactory(settings)).status(
+        strategy_name="triangular-multi-route",
+        symbol="BTC/USDT",
+    )
+
+    assert card.score == Decimal("0")
+    assert "strategy_archived_by_evolution" in card.reasons
+    assert status.selected_strategies == []
+    assert status.blocked_strategies[0]["strategy_name"] == "triangular-multi-route"
+
+
+def _use_temp_runtime_paths(settings: Settings, tmp_path: Path) -> None:
+    strategy_runtime = settings.strategy_runtime
+    strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    strategy_runtime.retrospective_path = str(tmp_path / "retrospective.md")
+    strategy_runtime.retrospective_state_path = str(tmp_path / "retrospective.state.json")
+    strategy_runtime.evolution_state_path = str(tmp_path / "evolution.state.json")
+    strategy_runtime.evolution_report_path = str(tmp_path / "evolution.md")
+
+
+class LockedSellBalanceFactory(ExchangeFactory):
+    """Factory that returns a mock sell exchange with no free BTC."""
+
+    def get(self, name: str) -> Exchange:
+        if name == "mock_alt":
+            return LockedSellMockExchange(name=name)
+        return super().get(name)
+
+
+class LockedSellMockExchange(MockExchange):
+    """Mock exchange with sell asset locked instead of free."""
+
+    def get_balances(self) -> AccountSnapshot:
+        return AccountSnapshot(
+            exchange=self.name,
+            balances={
+                "BTC": Balance(asset="BTC", total=Decimal("1"), free=Decimal("0"), locked=Decimal("1")),
+                "USDT": Balance(asset="USDT", total=Decimal("10000"), free=Decimal("10000"), locked=Decimal("0")),
+            },
+            timestamp=utcnow(),
+        )
+
+
+class TargetOKXFactory(ExchangeFactory):
+    """Factory that returns an OKX-like mock with a stronger spot/perp basis."""
+
+    def get(self, name: str) -> Exchange:
+        if name == "okx":
+            return TargetOKXMockExchange(name=name)
+        return super().get(name)
+
+
+class TargetOKXMockExchange(MockExchange):
+    """OKX-shaped exchange fixture for read-only market comparison."""
+
+    def get_ticker(self, symbol: str) -> Ticker:
+        ticker = MockExchange("mock").get_ticker(symbol)
+        return replace(ticker, exchange=self.name)
+
+    def get_orderbook(self, symbol: str) -> OrderBook:
+        orderbook = MockExchange("mock").get_orderbook(symbol)
+        return replace(orderbook, exchange=self.name)
+
+    def get_spot_perp_quote(self, symbol: str) -> SpotPerpQuote:
+        ticker = self.get_ticker(symbol)
+        return SpotPerpQuote(
+            exchange=self.name,
+            symbol=ticker.symbol,
+            spot_bid=ticker.bid,
+            spot_ask=ticker.ask,
+            perp_bid=ticker.bid + Decimal("550"),
+            perp_ask=ticker.ask + Decimal("560"),
+            funding_rate=Decimal("0.0008"),
+        )

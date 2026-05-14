@@ -1,0 +1,2 @@
+"""CoinBot API router package."""
+
