@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from pathlib import Path
+from time import sleep
 from typing import Any
 
 from trading_assistant.account.service import AccountService
 from trading_assistant.arbitrage.io import load_opportunity_file
 from trading_assistant.arbitrage.route_discovery import TriangularRouteDiscoveryService
 from trading_assistant.arbitrage.scanner import ArbitrageScanner
+from trading_assistant.autopilot import AutopilotRuntime, AutopilotStateStore
+from trading_assistant.autopilot.models import AutopilotMode
 from trading_assistant.backtesting.engine import BacktestEngine
 from trading_assistant.config.loader import load_settings
 from trading_assistant.config.schema import ExchangeConfig, Settings
@@ -25,12 +28,15 @@ from trading_assistant.reporting.report import ReportGenerator
 from trading_assistant.risk.manager import RiskManager
 from trading_assistant.strategies.demo_validation import StrategyDemoValidationService
 from trading_assistant.strategies.evolution import StrategyEvolutionService
+from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
 from trading_assistant.strategies.guard import StrategyRuntimeGuard
 from trading_assistant.strategies.market_compare import StrategyMarketComparisonService
 from trading_assistant.strategies.market_regime import StrategyMarketRegimeService
 from trading_assistant.strategies.models import ExecutionMode
+from trading_assistant.strategies.operator_brief import StrategyOperatorBriefService
 from trading_assistant.strategies.opportunity_density import OpportunityDensityService
 from trading_assistant.strategies.platform import StrategyCatalog, StrategyController, StrategyPortfolioService, StrategyScoreService
+from trading_assistant.strategies.pnl_attribution import StrategyPnlAttributionService
 from trading_assistant.strategies.registry import StrategyRegistry
 from trading_assistant.strategies.retrospective import StrategyRetrospectiveService
 from trading_assistant.strategies.revival import StrategyRevivalWindowService
@@ -39,6 +45,7 @@ from trading_assistant.strategies.review import StrategyReviewService
 from trading_assistant.strategies.runner import StrategyRunner
 from trading_assistant.strategies.validation_report import StrategyValidationReportService
 from trading_assistant.validation.demo_window_orchestrator import StrategyDemoWindowOrchestrator
+from trading_assistant.validation.demo_sampling_scheduler import StrategyDemoSamplingScheduler
 from trading_assistant.validation.service import StrategyValidationService
 from trading_assistant.workflow.route import TradingRouteWorkflow
 
@@ -176,6 +183,109 @@ class TradingAssistantApp:
         """Run the complete safe trading route."""
         workflow = TradingRouteWorkflow(self.settings, self.exchanges).run(symbol=symbol)
         return {"workflow": workflow.to_dict()}
+
+    def autopilot_run(
+        self,
+        *,
+        mode: AutopilotMode,
+        strategy_name: str,
+        symbol: str,
+        cycles: int,
+        interval_seconds: int | None,
+        demo_cycles_per_window: int,
+        target_exchange: str,
+        report_limit: int,
+        include_private_health: bool,
+    ) -> dict[str, Any]:
+        """Run detached paper/demo autopilot cycles."""
+        runtime = self._autopilot_runtime(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            demo_cycles_per_window=demo_cycles_per_window,
+            target_exchange=target_exchange,
+            report_limit=report_limit,
+            include_private_health=include_private_health,
+        )
+        result = runtime.run(
+            mode=mode,
+            strategy_name=strategy_name,
+            symbol=symbol,
+            cycles=cycles,
+            interval_seconds=interval_seconds,
+            demo_cycles_per_window=demo_cycles_per_window,
+            report_limit=report_limit,
+        )
+        return {"autopilot_run": result.to_dict()}
+
+    def autopilot_status(self) -> dict[str, Any]:
+        """Return persisted autopilot status."""
+        store = AutopilotStateStore(self.settings.strategy_runtime.autopilot_state_path)
+        return {"autopilot_status": store.read().to_dict()}
+
+    def autopilot_report(
+        self,
+        *,
+        mode: AutopilotMode,
+        strategy_name: str,
+        report_limit: int,
+    ) -> dict[str, Any]:
+        """Return read-only autopilot state and validation evidence."""
+        runtime = self._autopilot_runtime(
+            strategy_name=strategy_name,
+            symbol="BTC/USDT",
+            demo_cycles_per_window=1,
+            target_exchange="okx",
+            report_limit=report_limit,
+            include_private_health=False,
+        )
+        return {"autopilot_report": runtime.report(mode=mode, strategy_name=strategy_name, report_limit=report_limit).to_dict()}
+
+    def _autopilot_runtime(
+        self,
+        *,
+        strategy_name: str,
+        symbol: str,
+        demo_cycles_per_window: int,
+        target_exchange: str,
+        report_limit: int,
+        include_private_health: bool,
+    ) -> AutopilotRuntime:
+        """Build the detached autopilot runtime from existing safe services."""
+        return AutopilotRuntime(
+            settings=self.settings,
+            state_store=AutopilotStateStore(self.settings.strategy_runtime.autopilot_state_path),
+            paper_runner=lambda: self.strategy_run(
+                strategy_name=strategy_name,
+                max_cycles=1,
+                interval_seconds=0,
+                execution_mode="paper",
+                symbol=symbol,
+            ),
+            demo_runner=lambda: self.strategy_demo_window(
+                strategy_name=strategy_name,
+                cycles=demo_cycles_per_window,
+                symbol=symbol,
+                target_exchange=target_exchange,
+                report_limit=report_limit,
+                include_private_health=include_private_health,
+            ),
+            validation_reporter=lambda execution_mode, strategy, limit: self.strategy_validation_report(
+                execution_mode=execution_mode,
+                strategy_name=strategy,
+                limit=limit,
+            ),
+            operator_brief=lambda execution_mode, strategy, limit: self.strategy_operator_brief(
+                execution_mode=execution_mode,
+                strategy_name=strategy,
+                limit=limit,
+            ),
+            guard_status=lambda execution_mode, strategy: self.strategy_guard_status(
+                strategy_name=strategy,
+                execution_mode=execution_mode,
+            ),
+            promotion_status=lambda strategy: self.strategy_promotion_status(strategy_name=strategy),
+            sleeper=sleep,
+        )
 
     def strategy_list(self) -> dict[str, Any]:
         """Return registered production strategy definitions."""
@@ -336,6 +446,39 @@ class TradingAssistantApp:
         )
         return {"strategy_validation_report": report.to_dict()}
 
+    def strategy_pnl_attribution(
+        self,
+        execution_mode: ExecutionMode | None = None,
+        strategy_name: str = "all",
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Return read-only strategy-level PnL attribution from the journal."""
+        report = StrategyPnlAttributionService(self.settings.strategy_runtime).report(
+            execution_mode=execution_mode,
+            strategy_name=strategy_name,
+            limit=limit,
+        )
+        return {"strategy_pnl_attribution": report.to_dict()}
+
+    def strategy_operator_brief(
+        self,
+        execution_mode: ExecutionMode | None = None,
+        strategy_name: str = "all",
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Return a read-only operator brief for strategy safety and validation state."""
+        brief = StrategyOperatorBriefService(self.settings).brief(
+            execution_mode=execution_mode,
+            strategy_name=strategy_name,
+            limit=limit,
+        )
+        return {"strategy_operator_brief": brief.to_dict()}
+
+    def strategy_carry_basis_optimize(self, symbol: str = "BTC/USDT") -> dict[str, Any]:
+        """Return read-only carry/basis optimization diagnostics."""
+        report = CarryBasisOptimizationService(self.settings, self.exchanges).report(symbol=symbol)
+        return {"strategy_carry_basis_optimization": report.to_dict()}
+
     def strategy_guard_status(self, strategy_name: str = "all", execution_mode: ExecutionMode | None = None) -> dict[str, Any]:
         """Return stateful strategy guard status."""
         registry = StrategyRegistry()
@@ -454,6 +597,51 @@ class TradingAssistantApp:
                 target_strategy_names=target_strategy_names,
                 cycles=cycles,
                 symbol=symbol,
+            )
+        }
+
+    def strategy_demo_sampling(
+        self,
+        strategy_name: str,
+        windows: int,
+        cycles_per_window: int,
+        interval_seconds: int,
+        symbol: str,
+        target_exchange: str = "okx",
+        report_limit: int = 30,
+        include_private_health: bool = True,
+    ) -> dict[str, Any]:
+        """Run bounded same-size OKX demo-window samples."""
+        self._assert_okx_demo_config_ready()
+        target_strategy_names = [definition.name for definition in StrategyRegistry().expand(strategy_name)]
+        size_stage = {
+            "demo_order_size_multiplier": self.settings.strategy_runtime.demo_order_size_multiplier,
+            "demo_max_order_value_usdt": self.settings.strategy_runtime.demo_max_order_value_usdt,
+            "demo_strategy_size_overrides": {
+                strategy_name: override.model_dump(mode="json")
+                for strategy_name, override in self.settings.strategy_runtime.demo_strategy_size_overrides.items()
+            },
+        }
+        scheduler = StrategyDemoSamplingScheduler(
+            window_runner=lambda: self.strategy_demo_window(
+                strategy_name=strategy_name,
+                cycles=cycles_per_window,
+                symbol=symbol,
+                target_exchange=target_exchange,
+                report_limit=report_limit,
+                include_private_health=include_private_health,
+            ),
+            sleeper=sleep,
+        )
+        return {
+            "strategy_demo_sampling": scheduler.run(
+                strategy_name=strategy_name,
+                target_strategy_names=target_strategy_names,
+                windows=windows,
+                cycles_per_window=cycles_per_window,
+                symbol=symbol,
+                interval_seconds=interval_seconds,
+                size_stage=size_stage,
             )
         }
 

@@ -151,6 +151,35 @@ def build_parser() -> argparse.ArgumentParser:
     _add_json(workflow_run)
     workflow_run.set_defaults(handler=_handle_workflow_run)
 
+    autopilot = subcommands.add_parser("autopilot", help="Detached paper/demo autopilot commands")
+    autopilot_sub = autopilot.add_subparsers(dest="autopilot_command")
+    autopilot_run = autopilot_sub.add_parser("run", help="Run detached paper/demo autopilot cycles")
+    autopilot_run.add_argument("--config", help="Path to YAML config")
+    autopilot_run.add_argument("--mode", choices=["paper", "demo"], default="paper", help="Autopilot execution mode")
+    autopilot_run.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    autopilot_run.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    autopilot_run.add_argument("--cycles", type=int, default=1, help="Autopilot cycles; 0 means run until stopped")
+    autopilot_run.add_argument("--interval-seconds", type=int, help="Delay between cycles; defaults to config")
+    autopilot_run.add_argument("--demo-cycles-per-window", type=int, default=3, help="Demo validation cycles per autopilot demo window")
+    autopilot_run.add_argument("--target-exchange", default="okx", help="Target exchange for demo health and market checks")
+    autopilot_run.add_argument("--report-limit", type=int, default=50, help="Number of recent validation events to inspect")
+    autopilot_run.add_argument("--public-health-only", action="store_true", help="Skip private account read during demo health checks")
+    _add_json(autopilot_run)
+    autopilot_run.set_defaults(handler=_handle_autopilot_run)
+
+    autopilot_status = autopilot_sub.add_parser("status", help="Show latest autopilot state")
+    autopilot_status.add_argument("--config", help="Path to YAML config")
+    _add_json(autopilot_status)
+    autopilot_status.set_defaults(handler=_handle_autopilot_status)
+
+    autopilot_report = autopilot_sub.add_parser("report", help="Show read-only autopilot report")
+    autopilot_report.add_argument("--config", help="Path to YAML config")
+    autopilot_report.add_argument("--mode", choices=["paper", "demo"], default="paper", help="Report execution mode")
+    autopilot_report.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    autopilot_report.add_argument("--report-limit", type=int, default=50, help="Number of recent validation events to inspect")
+    _add_json(autopilot_report)
+    autopilot_report.set_defaults(handler=_handle_autopilot_report)
+
     strategy = subcommands.add_parser("strategy", help="Production strategy runtime commands")
     strategy_sub = strategy.add_subparsers(dest="strategy_command")
     strategy_list = strategy_sub.add_parser("list", help="List registered strategies")
@@ -250,6 +279,25 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_validation_report.add_argument("--limit", type=int, default=50, help="Number of latest matching journal events to summarize")
     _add_json(strategy_validation_report)
     strategy_validation_report.set_defaults(handler=_handle_strategy_validation_report)
+    strategy_operator_brief = strategy_sub.add_parser("operator-brief", help="Show read-only operator safety and validation brief")
+    strategy_operator_brief.add_argument("--config", help="Path to YAML config")
+    strategy_operator_brief.add_argument("--execution-mode", choices=["paper", "demo"], help="Filter brief to one execution mode")
+    strategy_operator_brief.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    strategy_operator_brief.add_argument("--limit", type=int, default=50, help="Number of latest matching journal events to summarize")
+    _add_json(strategy_operator_brief)
+    strategy_operator_brief.set_defaults(handler=_handle_strategy_operator_brief)
+    strategy_pnl_attribution = strategy_sub.add_parser("pnl-attribution", help="Show read-only strategy PnL attribution ledger")
+    strategy_pnl_attribution.add_argument("--config", help="Path to YAML config")
+    strategy_pnl_attribution.add_argument("--execution-mode", choices=["paper", "demo"], help="Filter report to one execution mode")
+    strategy_pnl_attribution.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    strategy_pnl_attribution.add_argument("--limit", type=int, default=50, help="Number of latest matching journal events to include")
+    _add_json(strategy_pnl_attribution)
+    strategy_pnl_attribution.set_defaults(handler=_handle_strategy_pnl_attribution)
+    strategy_carry_basis_optimize = strategy_sub.add_parser("carry-basis-optimize", help="Show read-only carry/basis optimization diagnostics")
+    strategy_carry_basis_optimize.add_argument("--config", help="Path to YAML config")
+    strategy_carry_basis_optimize.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    _add_json(strategy_carry_basis_optimize)
+    strategy_carry_basis_optimize.set_defaults(handler=_handle_strategy_carry_basis_optimize)
     strategy_guard_status = strategy_sub.add_parser("guard-status", help="Show stateful strategy runtime guard status")
     strategy_guard_status.add_argument("--config", help="Path to YAML config")
     strategy_guard_status.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -301,6 +349,25 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_json(strategy_demo_window)
     strategy_demo_window.set_defaults(handler=_handle_strategy_demo_window)
+    strategy_demo_sampling = strategy_sub.add_parser(
+        "demo-sampling",
+        help="Run bounded same-size OKX Demo Trading sampling windows",
+    )
+    strategy_demo_sampling.add_argument("--config", required=True, help="Path to OKX demo YAML config")
+    strategy_demo_sampling.add_argument("--strategy", default="triangular-multi-route", help="Strategy name")
+    strategy_demo_sampling.add_argument("--windows", type=int, default=3, help="Number of demo windows")
+    strategy_demo_sampling.add_argument("--cycles-per-window", type=int, default=3, help="Demo validation cycles per window")
+    strategy_demo_sampling.add_argument("--interval-seconds", type=int, default=0, help="Delay between successful windows")
+    strategy_demo_sampling.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_demo_sampling.add_argument("--target-exchange", default="okx", help="Enabled target exchange for health and market checks")
+    strategy_demo_sampling.add_argument("--report-limit", type=int, default=30, help="Number of rolling demo events to inspect before each window")
+    strategy_demo_sampling.add_argument(
+        "--public-health-only",
+        action="store_true",
+        help="Skip private account read during the no-order health check",
+    )
+    _add_json(strategy_demo_sampling)
+    strategy_demo_sampling.set_defaults(handler=_handle_strategy_demo_sampling)
     strategy_promotion_status = strategy_sub.add_parser("promotion-status", help="Show local/demo/live-canary promotion status")
     strategy_promotion_status.add_argument("--config", help="Path to YAML config")
     strategy_promotion_status.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -425,6 +492,38 @@ def _handle_workflow_run(args: argparse.Namespace) -> tuple[dict[str, Any], str]
     payload = _app(args).workflow_run(symbol=args.symbol)
     workflow = payload["workflow"]
     return payload, f"workflow completed={workflow['completed']} live_ready={workflow['live_ready']}"
+
+
+def _handle_autopilot_run(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).autopilot_run(
+        mode=args.mode,
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        cycles=args.cycles,
+        interval_seconds=args.interval_seconds,
+        demo_cycles_per_window=args.demo_cycles_per_window,
+        target_exchange=args.target_exchange,
+        report_limit=args.report_limit,
+        include_private_health=not args.public_health_only,
+    )
+    result = payload["autopilot_run"]
+    return payload, f"autopilot status={result['status']} cycles={result['cycles_completed']} stopped_reason={result['stopped_reason']}"
+
+
+def _handle_autopilot_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).autopilot_status()
+    state = payload["autopilot_status"]
+    return payload, f"autopilot status={state['status']} cycles={state['cycles_completed']}"
+
+
+def _handle_autopilot_report(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).autopilot_report(
+        mode=args.mode,
+        strategy_name=args.strategy,
+        report_limit=args.report_limit,
+    )
+    report = payload["autopilot_report"]
+    return payload, f"autopilot report status={report['state']['status']} live_orders_sent={report['live_orders_sent']}"
 
 
 def _handle_strategy_list(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
@@ -566,6 +665,44 @@ def _handle_strategy_validation_report(args: argparse.Namespace) -> tuple[dict[s
     return payload, f"strategy_validation_report events={report['scanned_events']} executed={total['executed']}"
 
 
+def _handle_strategy_operator_brief(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_operator_brief(
+        execution_mode=args.execution_mode,
+        strategy_name=args.strategy,
+        limit=args.limit,
+    )
+    brief = payload["strategy_operator_brief"]
+    cooldowns = sum(1 for entry in brief["guard"]["entries"] if entry["cooldown_active"])
+    return payload, (
+        f"strategy_operator_brief read_only={brief['read_only']} "
+        f"cooldowns={cooldowns} recommendations={len(brief['recommendations'])}"
+    )
+
+
+def _handle_strategy_pnl_attribution(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_pnl_attribution(
+        execution_mode=args.execution_mode,
+        strategy_name=args.strategy,
+        limit=args.limit,
+    )
+    report = payload["strategy_pnl_attribution"]
+    summary = report["summary"]
+    return payload, (
+        f"strategy_pnl_attribution entries={summary['total_entries']} "
+        f"cash_flow={summary['strategy_cash_flow_net_pnl_usdt']}"
+    )
+
+
+def _handle_strategy_carry_basis_optimize(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_carry_basis_optimize(symbol=args.symbol)
+    report = payload["strategy_carry_basis_optimization"]
+    summary = report["summary"]
+    return payload, (
+        f"strategy_carry_basis_optimization blocked={summary['blocked_count']} "
+        f"demo_ready={summary['demo_ready_count']}"
+    )
+
+
 def _handle_strategy_guard_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
     payload = _app(args).strategy_guard_status(strategy_name=args.strategy, execution_mode=args.execution_mode)
     status = payload["strategy_guard_status"]
@@ -614,6 +751,24 @@ def _handle_strategy_demo_window(args: argparse.Namespace) -> tuple[dict[str, An
     )
     result = payload["strategy_demo_window_orchestration"]
     return payload, f"strategy_demo_window status={result['status']} orders_attempted={result['orders_attempted']}"
+
+
+def _handle_strategy_demo_sampling(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_demo_sampling(
+        strategy_name=args.strategy,
+        windows=args.windows,
+        cycles_per_window=args.cycles_per_window,
+        interval_seconds=args.interval_seconds,
+        symbol=args.symbol,
+        target_exchange=args.target_exchange,
+        report_limit=args.report_limit,
+        include_private_health=not args.public_health_only,
+    )
+    result = payload["strategy_demo_sampling"]
+    return payload, (
+        f"strategy_demo_sampling status={result['status']} "
+        f"windows_completed={result['windows_completed']} stop_reason={result['stop_reason']}"
+    )
 
 
 def _handle_strategy_promotion_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

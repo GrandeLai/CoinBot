@@ -13,6 +13,7 @@ from trading_assistant.exchanges.base import AccountSnapshot, Balance, Exchange,
 from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.exchanges.mock import MockExchange
 from trading_assistant.arbitrage.route_discovery import TriangularRouteDiscoveryService
+from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
 from trading_assistant.strategies.market_compare import StrategyMarketComparisonService
 from trading_assistant.strategies.opportunity_density import OpportunityDensityService
 from trading_assistant.strategies.platform import StrategyCatalog, StrategyController, StrategyPortfolioService, StrategyScoreService
@@ -195,6 +196,25 @@ def test_carry_basis_quality_gates_explain_basis_and_hedge_cost_filters(tmp_path
     funding_candidates = funding_report.diagnostics["candidates"]
     assert any("basis_hedge_cost_above_maximum" in candidate["reasons"] for candidate in funding_candidates)
     assert all("basis_hedge_cost_pct" in candidate for candidate in funding_candidates)
+
+
+def test_carry_basis_optimization_reports_break_even_gaps_without_trading(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.arbitrage.min_net_profit_pct = Decimal("100")
+
+    report = CarryBasisOptimizationService(settings, ExchangeFactory(settings)).report(symbol="BTC/USDT")
+
+    assert report.read_only is True
+    assert report.orders_sent is False
+    assert report.live_orders_sent is False
+    assert report.summary["blocked_count"] >= 1
+    spot = next(card for card in report.cards if card.strategy_name == "spot-perp-carry")
+    assert spot.demo_ready is False
+    assert spot.break_even_gap_usdt > Decimal("0")
+    assert "keep_demo_blocked_until_break_even_gap_closes" in spot.recommended_actions
+    assert "arbitrage.spot_perp_min_basis_pct" in spot.suggested_config_fields
+    assert "net_profit_below_minimum" in spot.reasons
 
 
 def test_strategy_market_compare_is_read_only_and_explains_target_delta(tmp_path: Path) -> None:

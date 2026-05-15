@@ -64,6 +64,10 @@
 - [x] Operation validation hub lists every registered live-capable operation with a matching demo config and demo command.
 - [x] Strategy runtime registers all four arbitrage strategies for controlled long-running paper execution.
 - [x] Strategy runtime applies position caps, max open order controls, order TTL, cancel/reprice lifecycle plans, journaling, review, and advisory learning.
+- [x] Detached autopilot runtime can run bounded or continuous paper cycles outside Codex and persist state.
+- [x] Detached autopilot runtime can invoke OKX Demo Trading windows through existing demo gates without enabling live trading.
+- [x] Autopilot status and report commands are read-only and expose persisted state plus validation/operator evidence.
+- [x] Autopilot stops immediately if a paper/demo payload reports `live_orders_sent=true`.
 - [x] OKX demo strategy runtime preflights profitability before sending canary orders, stops longer loops on demo stop-loss/drawdown, and reconciles cash-flow PnL against account-equity delta.
 - [x] OKX demo strategy execution fetches exchange fill receipts from `fills-history` and records receipt completeness, fee expense, and fill PnL in `pnl_validation.exchange_receipts`.
 - [x] OKX demo profile supports controlled stage-1 position increase through `demo_order_size_multiplier=2` while keeping live trading disabled.
@@ -170,6 +174,9 @@
 - [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --json`
 - [x] `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy all --cycles 10 --json`
 - [x] `crypto-assistant strategy promotion-status --config configs/okx.demo.example.yaml --strategy all --json`
+- [x] `crypto-assistant autopilot run --config configs/config.example.yaml --mode paper --strategy all --cycles 1 --interval-seconds 0 --json`
+- [x] `crypto-assistant autopilot status --config configs/config.example.yaml --json`
+- [x] `crypto-assistant autopilot report --config configs/config.example.yaml --mode paper --strategy all --json`
 - [x] `crypto-assistant backtest run --config configs/config.example.yaml --json`
 - [x] `crypto-assistant report generate --type daily --json`
 - [x] `crypto-assistant workflow run --config configs/config.example.yaml --symbol BTC/USDT --json`

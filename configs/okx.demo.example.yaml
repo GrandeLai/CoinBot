@@ -127,11 +127,17 @@ strategy_runtime:
   reprice_threshold_pct: "0.05"
   demo_max_order_value_usdt: "20"
   demo_order_size_multiplier: "2"
+  demo_strategy_size_overrides: {}
   demo_order_wait_seconds: 3
   demo_order_poll_interval_seconds: "0.5"
   demo_limit_price_buffer_pct: "0.003"
   demo_require_profitable_preflight: true
   demo_min_preflight_net_pnl_usdt: "0"
+  demo_preflight_adaptive_buffer_enabled: true
+  demo_preflight_adaptive_buffer_min_samples: 3
+  demo_preflight_adaptive_buffer_quantile_pct: "80"
+  demo_preflight_adaptive_buffer_lookback: 50
+  demo_preflight_adaptive_buffer_max_usdt: "0.10"
   demo_stop_loss_usdt: "1"
   demo_max_drawdown_usdt: "1"
   demo_pnl_reconciliation_tolerance_usdt: "0.10"
@@ -163,3 +169,7 @@ strategy_runtime:
   validation_min_net_profit_usdt: "0"
   validation_max_drawdown_usdt: "1"
   validation_allow_live_canary: false
+  autopilot_state_path: logs/okx-demo-autopilot-state.json
+  autopilot_default_interval_seconds: 60
+  autopilot_max_consecutive_blocked_cycles: 3
+  autopilot_stop_on_live_signal: true

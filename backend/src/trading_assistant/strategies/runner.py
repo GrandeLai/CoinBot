@@ -20,6 +20,7 @@ from trading_assistant.strategies.guard import RuntimeGuardDecision, StrategyRun
 from trading_assistant.strategies.journal import StrategyJournal
 from trading_assistant.strategies.models import ExecutionMode, StrategyCycleResult, StrategyDefinition, StrategyRunResult
 from trading_assistant.strategies.policy import StrategyPolicy
+from trading_assistant.strategies.preflight_buffer import AdaptivePreflightBufferService
 from trading_assistant.strategies.registry import StrategyRegistry
 
 
@@ -34,6 +35,7 @@ class StrategyRunner:
         self.policy = StrategyPolicy(settings.strategy_runtime)
         self.journal = StrategyJournal(settings.strategy_runtime.journal_path)
         self.guard = StrategyRuntimeGuard(settings.strategy_runtime)
+        self.preflight_buffer = AdaptivePreflightBufferService(settings.strategy_runtime)
         self.demo_executor = demo_executor or StrategyDemoExecutionService(settings)
 
     def scan_once(self, strategy_name: str, symbol: str = "BTC/USDT") -> list[ArbitrageOpportunity]:
@@ -200,10 +202,12 @@ class StrategyRunner:
                 message="OKX Demo Trading is not enabled for this strategy yet; use scan/paper validation first.",
             )
         local_gate = self._demo_local_validation_gate(definition, symbol)
-        if not bool(local_gate["approved"]):
-            raw_reasons = local_gate.get("reasons", [])
-            reason_values = raw_reasons if isinstance(raw_reasons, list) else [raw_reasons]
-            reasons = [str(reason) for reason in reason_values]
+        local_gate_approved = bool(local_gate["approved"])
+        reasons = _local_gate_reasons(local_gate)
+        directional_exit_override = (
+            not local_gate_approved and _local_gate_has_directional_exit_signal(definition, local_gate)
+        )
+        if not local_gate_approved and not directional_exit_override:
             selected_opportunity_id = local_gate.get("selected_opportunity_id")
             return StrategyCycleResult(
                 cycle=cycle,
@@ -222,6 +226,8 @@ class StrategyRunner:
             )
         try:
             preview = self._demo_preflight(execution_name, local_gate)
+            if preview is not None:
+                preview = self.preflight_buffer.apply(definition.name, preview)
         except (ExchangeError, SafetyError) as exc:
             if not _is_runtime_market_error(exc):
                 raise
@@ -240,6 +246,23 @@ class StrategyRunner:
                 execution={"local_validation": local_gate, "preflight_error": reason},
                 net_profit=Decimal("0"),
                 message="OKX Demo Trading skipped because preflight market data failed.",
+            )
+        if directional_exit_override and not _is_directional_exit_preview(preview):
+            reason = str((preview or {}).get("reason") or "directional_exit_preflight_missing")
+            return StrategyCycleResult(
+                cycle=cycle,
+                strategy_name=definition.name,
+                decision="skipped",
+                execution_mode="demo",
+                opportunities_found=int(str(local_gate.get("opportunities_found", 0))),
+                selected_opportunity_id=None,
+                risk_approved=False,
+                risk_reasons=["local_validation_not_passed", *reasons, reason],
+                budget=None,
+                lifecycle=lifecycle,
+                execution={"local_validation": local_gate, "preflight": preview},
+                net_profit=Decimal(str((preview or {}).get("net_pnl_usdt", "0"))),
+                message="OKX Demo Trading skipped because reverse-signal context did not preview a managed exit.",
             )
         if preview is not None and not self._demo_preflight_approved(preview):
             reason = str(preview.get("reason") or "demo_preflight_not_profitable")
@@ -300,6 +323,8 @@ class StrategyRunner:
 
     def _demo_preflight_approved(self, preview: dict[str, object]) -> bool:
         """Return whether demo execution should send orders after preflight."""
+        if _is_directional_exit_preview(preview):
+            return True
         if not self.settings.strategy_runtime.demo_require_profitable_preflight:
             return True
         if not bool(preview.get("approved", False)):
@@ -341,18 +366,26 @@ class StrategyRunner:
                 "selected_opportunity_id": None,
             }
         if not opportunities:
-            return {
+            diagnostics = self._local_diagnostics(scanner, definition, symbol)
+            no_opportunity_reasons = _diagnostic_reasons(diagnostics) or ["no_local_opportunity"]
+            payload: dict[str, object] = {
                 "approved": False,
                 "layer": "local",
-                "reasons": ["no_local_opportunity"],
+                "reasons": no_opportunity_reasons,
                 "opportunities_found": 0,
                 "selected_opportunity_id": None,
             }
+            if diagnostics:
+                payload["diagnostics"] = diagnostics
+            directional_signal = _directional_signal_from_diagnostics(diagnostics)
+            if directional_signal is not None:
+                payload["directional_signal"] = directional_signal
+            return payload
         selected = max(opportunities, key=lambda item: item.net_profit)
         risk_decision = RiskManager(local_settings.risk).evaluate(selected)
         budget = StrategyPolicy(local_settings.strategy_runtime).evaluate(definition.name, selected)
         reasons = [*risk_decision.violations, *budget.reasons]
-        return {
+        payload = {
             "approved": risk_decision.approved and budget.approved,
             "layer": "local",
             "reasons": reasons,
@@ -362,6 +395,25 @@ class StrategyRunner:
             "risk": risk_decision.to_dict(),
             "budget": budget.to_dict(),
         }
+        if definition.category == "directional":
+            directional_signal = selected.metadata.get("directional_signal")
+            if isinstance(directional_signal, dict):
+                payload["directional_signal"] = directional_signal
+        return payload
+
+    def _local_diagnostics(
+        self,
+        scanner: ArbitrageScanner,
+        definition: StrategyDefinition,
+        symbol: str,
+    ) -> dict[str, Any]:
+        """Return local scan diagnostics when a strategy can explain filtered signals."""
+        if definition.category != "directional":
+            return {}
+        try:
+            return scanner.diagnose(definition.scanner_type, symbol=symbol, exchange="mock")
+        except ExchangeError:
+            return {}
 
     def _guard_skipped_result(
         self,
@@ -467,6 +519,67 @@ def _compact_exception(exc: Exception) -> str:
     """Return a bounded one-line exception description for reports and guard state."""
     text = f"{exc.__class__.__name__}: {exc}".replace("\n", " ").strip()
     return text[:240]
+
+
+def _local_gate_reasons(local_gate: dict[str, object]) -> list[str]:
+    """Return normalized local validation reason codes."""
+    raw_reasons = local_gate.get("reasons", [])
+    reason_values = raw_reasons if isinstance(raw_reasons, list) else [raw_reasons]
+    return [str(reason) for reason in reason_values if reason is not None]
+
+
+def _local_gate_has_directional_exit_signal(definition: StrategyDefinition, local_gate: dict[str, object]) -> bool:
+    """Return whether a failed local directional gate is an explicit exit signal."""
+    if definition.category != "directional":
+        return False
+    signal_value = _local_gate_signal_value(local_gate)
+    if signal_value in {"sell", "exit", "close", "reduce"}:
+        return True
+    return "signal_sell" in _local_gate_reasons(local_gate)
+
+
+def _local_gate_signal_value(local_gate: dict[str, object]) -> str | None:
+    """Extract a normalized directional signal value from local validation context."""
+    signal = local_gate.get("directional_signal")
+    if isinstance(signal, dict):
+        value = signal.get("signal") or signal.get("action")
+        if value is not None:
+            return str(value).lower()
+    diagnostics = local_gate.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        signal = _directional_signal_from_diagnostics(diagnostics)
+        if signal is not None:
+            value = signal.get("signal") or signal.get("action")
+            if value is not None:
+                return str(value).lower()
+    return None
+
+
+def _diagnostic_reasons(diagnostics: dict[str, Any]) -> list[str]:
+    """Return scanner diagnostic reason codes."""
+    raw_reasons = diagnostics.get("reasons", [])
+    reason_values = raw_reasons if isinstance(raw_reasons, list) else [raw_reasons]
+    return [str(reason) for reason in reason_values if reason is not None]
+
+
+def _directional_signal_from_diagnostics(diagnostics: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract the first directional signal row from scanner diagnostics."""
+    best = diagnostics.get("best_candidate")
+    if isinstance(best, dict) and isinstance(best.get("signal"), dict):
+        return best["signal"]
+    candidates = diagnostics.get("candidates")
+    if isinstance(candidates, list):
+        for candidate in candidates:
+            if isinstance(candidate, dict) and isinstance(candidate.get("signal"), dict):
+                return candidate["signal"]
+    return None
+
+
+def _is_directional_exit_preview(preview: dict[str, object] | None) -> bool:
+    """Return whether a preflight preview is a managed directional exit."""
+    if preview is None or not bool(preview.get("approved", False)):
+        return False
+    return str(preview.get("reason") or "").startswith("directional_exit_")
 
 
 def _accepts_context(callable_obj: object) -> bool:

@@ -286,6 +286,21 @@ class ReportingConfig(BaseModel):
     output_dir: str = "reports"
 
 
+class DemoStrategySizingConfig(BaseModel):
+    """Optional per-strategy OKX demo canary sizing override."""
+
+    order_size_multiplier: Decimal | None = None
+    max_order_value_usdt: Decimal | None = None
+
+    @field_validator("order_size_multiplier", "max_order_value_usdt")
+    @classmethod
+    def positive_optional_demo_size(cls, value: Decimal | None) -> Decimal | None:
+        """Require positive override values when configured."""
+        if value is not None and value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+
 class StrategyRuntimeConfig(BaseModel):
     """Controls for long-running strategy orchestration."""
 
@@ -314,11 +329,17 @@ class StrategyRuntimeConfig(BaseModel):
     reprice_threshold_pct: Decimal = Decimal("0.05")
     demo_max_order_value_usdt: Decimal = Decimal("10")
     demo_order_size_multiplier: Decimal = Decimal("1")
+    demo_strategy_size_overrides: dict[str, DemoStrategySizingConfig] = Field(default_factory=dict)
     demo_order_wait_seconds: int = 3
     demo_order_poll_interval_seconds: Decimal = Decimal("0.5")
     demo_limit_price_buffer_pct: Decimal = Decimal("0.001")
     demo_require_profitable_preflight: bool = True
     demo_min_preflight_net_pnl_usdt: Decimal = Decimal("0")
+    demo_preflight_adaptive_buffer_enabled: bool = True
+    demo_preflight_adaptive_buffer_min_samples: int = 3
+    demo_preflight_adaptive_buffer_quantile_pct: Decimal = Decimal("80")
+    demo_preflight_adaptive_buffer_lookback: int = 50
+    demo_preflight_adaptive_buffer_max_usdt: Decimal = Decimal("0.10")
     demo_stop_loss_usdt: Decimal = Decimal("1")
     demo_max_drawdown_usdt: Decimal = Decimal("1")
     demo_pnl_reconciliation_tolerance_usdt: Decimal = Decimal("0.05")
@@ -350,6 +371,10 @@ class StrategyRuntimeConfig(BaseModel):
     validation_min_net_profit_usdt: Decimal = Decimal("0")
     validation_max_drawdown_usdt: Decimal = Decimal("1")
     validation_allow_live_canary: bool = False
+    autopilot_state_path: str = "logs/autopilot-state.json"
+    autopilot_default_interval_seconds: int = 60
+    autopilot_max_consecutive_blocked_cycles: int = 3
+    autopilot_stop_on_live_signal: bool = True
 
     @field_validator(
         "max_position_value_usdt",
@@ -380,6 +405,10 @@ class StrategyRuntimeConfig(BaseModel):
         "validation_min_local_executions",
         "validation_min_demo_executions",
         "portfolio_max_concurrent_strategies",
+        "demo_preflight_adaptive_buffer_min_samples",
+        "demo_preflight_adaptive_buffer_lookback",
+        "autopilot_default_interval_seconds",
+        "autopilot_max_consecutive_blocked_cycles",
     )
     @classmethod
     def positive_strategy_ints(cls, value: int) -> int:
@@ -393,6 +422,8 @@ class StrategyRuntimeConfig(BaseModel):
         "demo_order_poll_interval_seconds",
         "demo_limit_price_buffer_pct",
         "demo_min_preflight_net_pnl_usdt",
+        "demo_preflight_adaptive_buffer_quantile_pct",
+        "demo_preflight_adaptive_buffer_max_usdt",
         "demo_pnl_reconciliation_tolerance_usdt",
         "demo_residual_inventory_tolerance_usdt",
         "min_review_win_rate_pct",
@@ -417,6 +448,14 @@ class StrategyRuntimeConfig(BaseModel):
         """Keep demo marketable-limit buffers bounded."""
         if value >= Decimal("0.05"):
             raise ValueError("must be below 0.05")
+        return value
+
+    @field_validator("demo_preflight_adaptive_buffer_quantile_pct")
+    @classmethod
+    def reasonable_preflight_buffer_quantile(cls, value: Decimal) -> Decimal:
+        """Keep adaptive preflight buffer quantiles in percentile bounds."""
+        if value > Decimal("100"):
+            raise ValueError("must be at most 100")
         return value
 
 

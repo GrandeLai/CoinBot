@@ -50,6 +50,15 @@ def test_loads_safe_example_config() -> None:
     assert settings.arbitrage.futures_basis_min_basis_pct == Decimal("0.05")
 
 
+def test_strategy_runtime_autopilot_defaults_are_safe() -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+
+    assert settings.strategy_runtime.autopilot_state_path == "logs/autopilot-state.json"
+    assert settings.strategy_runtime.autopilot_default_interval_seconds == 60
+    assert settings.strategy_runtime.autopilot_max_consecutive_blocked_cycles == 3
+    assert settings.strategy_runtime.autopilot_stop_on_live_signal is True
+
+
 def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatch) -> None:
     for name in OKX_CONFIG_ENV_NAMES:
         monkeypatch.delenv(name, raising=False)

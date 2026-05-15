@@ -107,6 +107,57 @@ def test_cli_workflow_run_returns_full_route(capsys) -> None:
     assert payload["workflow"]["agent_live_readiness"]["ready"] is False
 
 
+def test_cli_autopilot_run_status_and_report(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "autopilot.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+  autopilot_state_path: {tmp_path / "autopilot-state.json"}
+  review_min_samples: 1
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        [
+            "autopilot",
+            "run",
+            "--config",
+            str(config_path),
+            "--mode",
+            "paper",
+            "--strategy",
+            "cross-exchange",
+            "--cycles",
+            "1",
+            "--interval-seconds",
+            "0",
+        ],
+        capsys,
+    )
+    assert code == 0
+    assert payload["autopilot_run"]["status"] == "Completed"
+    assert payload["autopilot_run"]["live_orders_sent"] is False
+
+    code, payload = _invoke(["autopilot", "status", "--config", str(config_path)], capsys)
+    assert code == 0
+    assert payload["autopilot_status"]["status"] == "Completed"
+
+    code, payload = _invoke(
+        ["autopilot", "report", "--config", str(config_path), "--mode", "paper", "--strategy", "cross-exchange"],
+        capsys,
+    )
+    assert code == 0
+    assert payload["autopilot_report"]["state"]["status"] == "Completed"
+    assert payload["autopilot_report"]["live_orders_sent"] is False
+
+
 def test_cli_agent_live_readiness_blocks_by_default(capsys, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("COINBOT_AGENT_TRADING_ENABLED", "false")
     monkeypatch.setenv("COINBOT_AGENT_ALLOW_LIVE_ORDERS", "false")
@@ -474,6 +525,24 @@ strategy_runtime:
     assert report_help_exit.value.code == 0
     assert "--limit" in report_help_output.out
 
+    with pytest.raises(SystemExit) as pnl_help_exit:
+        main(["strategy", "pnl-attribution", "--help"])
+    pnl_help_output = capsys.readouterr()
+    assert pnl_help_exit.value.code == 0
+    assert "--execution-mode" in pnl_help_output.out
+
+    with pytest.raises(SystemExit) as operator_brief_help_exit:
+        main(["strategy", "operator-brief", "--help"])
+    operator_brief_help_output = capsys.readouterr()
+    assert operator_brief_help_exit.value.code == 0
+    assert "--limit" in operator_brief_help_output.out
+
+    with pytest.raises(SystemExit) as carry_basis_help_exit:
+        main(["strategy", "carry-basis-optimize", "--help"])
+    carry_basis_help_output = capsys.readouterr()
+    assert carry_basis_help_exit.value.code == 0
+    assert "--symbol" in carry_basis_help_output.out
+
     with pytest.raises(SystemExit) as opportunity_help_exit:
         main(["strategy", "opportunity-report", "--help"])
     opportunity_help_output = capsys.readouterr()
@@ -509,6 +578,12 @@ strategy_runtime:
     demo_window_help_output = capsys.readouterr()
     assert demo_window_help_exit.value.code == 0
     assert "--public-health-only" in demo_window_help_output.out
+
+    with pytest.raises(SystemExit) as demo_sampling_help_exit:
+        main(["strategy", "demo-sampling", "--help"])
+    demo_sampling_help_output = capsys.readouterr()
+    assert demo_sampling_help_exit.value.code == 0
+    assert "--cycles-per-window" in demo_sampling_help_output.out
 
     with pytest.raises(SystemExit) as candidate_help_exit:
         main(["strategy", "candidate-backtest", "--help"])
@@ -553,6 +628,141 @@ strategy_runtime:
     assert payload["strategy_candidate_backtest"]["candidates"]
 
 
+def test_cli_strategy_pnl_attribution_reads_journal_without_trading(tmp_path: Path, capsys) -> None:
+    journal_path = tmp_path / "strategy-events.jsonl"
+    journal_path.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "event": "strategy_cycle",
+                        "execution_mode": "demo",
+                        "strategy_name": "triangular-multi-route",
+                        "decision": "executed",
+                        "net_profit": "0.20",
+                        "execution": {
+                            "preflight": {"net_pnl_usdt": "0.18"},
+                            "pnl_validation": {
+                                "cash_flow_net_pnl_usdt": "0.20",
+                                "equity_delta_usdt": "0.23",
+                                "within_tolerance": True,
+                                "residual_inventory_usdt": "0.01",
+                                "residual_inventory_within_tolerance": True,
+                            },
+                        },
+                    }
+                )
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "strategy.yaml"
+    config_path.write_text(f"strategy_runtime:\n  journal_path: {journal_path}\n", encoding="utf-8")
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "pnl-attribution",
+            "--config",
+            str(config_path),
+            "--execution-mode",
+            "demo",
+            "--strategy",
+            "triangular-multi-route",
+            "--json",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_pnl_attribution"]
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["summary"]["strategy_cash_flow_net_pnl_usdt"] == "0.200000"
+
+
+def test_cli_strategy_operator_brief_is_read_only(tmp_path: Path, capsys) -> None:
+    journal_path = tmp_path / "strategy-events.jsonl"
+    config_path = tmp_path / "strategy.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {journal_path}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  demo_strategy_size_overrides:
+    cross-exchange:
+      order_size_multiplier: "1"
+      max_order_value_usdt: "10"
+""".strip(),
+        encoding="utf-8",
+    )
+    journal_path.write_text(
+        json.dumps(
+            {
+                "event": "strategy_cycle",
+                "execution_mode": "demo",
+                "strategy_name": "cross-exchange",
+                "decision": "executed",
+                "net_profit": "0.12",
+                "risk_reasons": [],
+                "execution": {
+                    "demo_orders_sent": True,
+                    "live_orders_sent": False,
+                    "pnl_validation": {"within_tolerance": True, "residual_inventory_within_tolerance": True},
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        ["strategy", "operator-brief", "--config", str(config_path), "--execution-mode", "demo", "--strategy", "all"],
+        capsys,
+    )
+
+    assert code == 0
+    brief = payload["strategy_operator_brief"]
+    assert brief["orders_sent"] is False
+    assert brief["live_orders_sent"] is False
+    assert brief["safety"]["live_trading"] is False
+    assert brief["size_stage"]["demo_order_size_multiplier"] == "1"
+    assert brief["size_stage"]["demo_strategy_size_overrides"]["cross-exchange"]["max_order_value_usdt"] == "10"
+    assert brief["validation"]["total"]["executed"] == 1
+    assert "live_canary_disabled" in brief["recommendations"]
+
+
+def test_cli_strategy_carry_basis_optimize_is_read_only(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "strategy.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "runtime-guard.json"}
+  retrospective_path: {tmp_path / "retrospective.md"}
+  retrospective_state_path: {tmp_path / "retrospective.state.json"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        ["strategy", "carry-basis-optimize", "--config", str(config_path), "--symbol", "BTC/USDT", "--json"],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_carry_basis_optimization"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert {card["strategy_name"] for card in report["cards"]} == {
+        "funding-carry-hedged",
+        "spot-perp-carry",
+        "futures-perp-basis",
+    }
+
+
 def test_cli_strategy_validate_demo_blocks_with_safe_default_config(capsys) -> None:
     code = main(["strategy", "validate-demo", "--config", str(EXAMPLE_CONFIG), "--strategy", "all", "--json"])
     captured = capsys.readouterr()
@@ -575,6 +785,16 @@ def test_cli_strategy_validate_demo_window_blocks_with_safe_default_config(capsy
 
 def test_cli_strategy_demo_window_blocks_with_safe_default_config(capsys) -> None:
     code = main(["strategy", "demo-window", "--config", str(EXAMPLE_CONFIG), "--strategy", "triangular-multi-route", "--cycles", "1", "--json"])
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert code != 0
+    assert payload["error"]["type"] == "SafetyError"
+    assert "enabled OKX sandbox" in payload["error"]["message"]
+
+
+def test_cli_strategy_demo_sampling_blocks_with_safe_default_config(capsys) -> None:
+    code = main(["strategy", "demo-sampling", "--config", str(EXAMPLE_CONFIG), "--strategy", "triangular-multi-route", "--windows", "1", "--json"])
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
 

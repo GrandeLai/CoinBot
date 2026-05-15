@@ -76,12 +76,13 @@ class StrategyDemoExecutionService:
         self._account_level = self._read_account_level()
         if strategy_name in DIRECTIONAL_DEMO_STRATEGIES:
             return self._execute_directional_lifecycle(strategy_name, context or {})
+        sizing_policy = self._demo_sizing_policy(strategy_name)
         account_before = self._account_snapshot()
         if strategy_name == "triangular":
-            orders, sequence_status, abort_reason = self._execute_triangular_sequence()
+            orders, sequence_status, abort_reason = self._execute_triangular_sequence(strategy_name)
         else:
             specs = self._order_specs(strategy_name)
-            self._assert_order_caps(specs)
+            self._assert_order_caps(specs, strategy_name=strategy_name)
             orders, sequence_status, abort_reason = self._execute_order_sequence(specs)
         account_after = self._account_snapshot()
         reference_prices = self._reference_prices()
@@ -99,6 +100,7 @@ class StrategyDemoExecutionService:
                 "live_orders_sent": False,
                 "account_mode": self._account_level,
                 "orders": [order.to_dict() for order in orders],
+                "sizing_policy": sizing_policy,
                 "gross_pnl_usdt": _money(gross_pnl),
                 "estimated_fee_usdt": _money(fee),
                 "net_pnl_usdt": _money(net_pnl),
@@ -116,22 +118,23 @@ class StrategyDemoExecutionService:
         position = store.get(strategy_name, symbol)
         if position is None or position.state != "open":
             return self._execute_directional_entry(strategy_name, symbol, context, account_before, store)
-        exit_reason = self._directional_exit_reason(position)
+        exit_reason = self._directional_exit_reason(position, context)
         if exit_reason is None:
             account_after = self._account_snapshot()
             current_price = _price(self.provider, position.symbol)
             unrealized = (current_price - position.entry_price) * position.quantity
             return to_jsonable(
                 {
-                    "strategy_name": strategy_name,
-                    "strategy_family": "directional",
-                    "status": "open",
+            "strategy_name": strategy_name,
+            "strategy_family": "directional",
+            "status": "open",
                     "abort_reason": None,
                     "provider_demo": bool(getattr(self.provider, "demo", False)),
                     "demo_orders_sent": False,
                     "live_orders_sent": False,
                     "account_mode": self._account_level,
                     "orders": [],
+                    "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                     "gross_pnl_usdt": _money(unrealized),
                     "estimated_fee_usdt": _money(Decimal("0")),
                     "net_pnl_usdt": _money(Decimal("0")),
@@ -142,7 +145,7 @@ class StrategyDemoExecutionService:
                 }
             )
         spec = self._directional_exit_spec(position)
-        self._assert_order_caps([spec])
+        self._assert_order_caps([spec], strategy_name=strategy_name, include_directional=True)
         order = self._submit_wait_close(spec)
         account_after = self._account_snapshot()
         if not _order_completed(order, spec):
@@ -157,6 +160,7 @@ class StrategyDemoExecutionService:
                     "live_orders_sent": False,
                     "account_mode": self._account_level,
                     "orders": [order.to_dict()],
+                    "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                     "gross_pnl_usdt": _money(Decimal("0")),
                     "estimated_fee_usdt": _money(order.notional_usdt * self.settings.arbitrage.taker_fee_pct),
                     "net_pnl_usdt": _money(Decimal("0")),
@@ -186,10 +190,12 @@ class StrategyDemoExecutionService:
                 "live_orders_sent": False,
                 "account_mode": self._account_level,
                 "orders": [order.to_dict()],
+                "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                 "gross_pnl_usdt": _money(gross_pnl),
                 "estimated_fee_usdt": _money(fee),
                 "net_pnl_usdt": _money(net_pnl),
                 "pnl_validation": self._directional_closed_position_validation(position, order, net_pnl),
+                "managed_exit_audit": self._directional_exit_audit(closed, exit_reason, net_pnl),
                 "position_lifecycle": closed.to_dict(),
                 "account_before": account_before,
                 "account_after": account_after,
@@ -206,7 +212,7 @@ class StrategyDemoExecutionService:
     ) -> dict[str, Any]:
         """Submit one managed directional spot entry and persist it when filled."""
         spec = self._directional_entry_spec(strategy_name, symbol)
-        self._assert_order_caps([spec])
+        self._assert_order_caps([spec], strategy_name=strategy_name, include_directional=True)
         order = self._submit_wait_close(spec)
         account_after = self._account_snapshot()
         fee = order.notional_usdt * self.settings.arbitrage.taker_fee_pct
@@ -222,6 +228,7 @@ class StrategyDemoExecutionService:
                     "live_orders_sent": False,
                     "account_mode": self._account_level,
                     "orders": [order.to_dict()],
+                    "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                     "gross_pnl_usdt": _money(Decimal("0")),
                     "estimated_fee_usdt": _money(fee),
                     "net_pnl_usdt": _money(Decimal("0")),
@@ -263,6 +270,7 @@ class StrategyDemoExecutionService:
                 "live_orders_sent": False,
                 "account_mode": self._account_level,
                 "orders": [order.to_dict()],
+                "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                 "gross_pnl_usdt": _money(Decimal("0")),
                 "estimated_fee_usdt": _money(fee),
                 "net_pnl_usdt": _money(Decimal("0")),
@@ -292,12 +300,12 @@ class StrategyDemoExecutionService:
                 return orders, "aborted_unwound", abort_reason
         return orders, "closed", None
 
-    def _execute_triangular_sequence(self) -> tuple[list[DemoOrderExecution], str, str | None]:
+    def _execute_triangular_sequence(self, strategy_name: str) -> tuple[list[DemoOrderExecution], str, str | None]:
         """Execute a triangular canary with dynamic sizes based on actual filled inventory."""
-        multiplier = self.settings.strategy_runtime.demo_order_size_multiplier
+        multiplier = self._demo_order_size_multiplier(strategy_name)
         btc_qty = (Decimal("0.0001") * multiplier).quantize(Decimal("0.0001"), rounding=ROUND_DOWN)
         first = DemoExecutionSpec("spot", "BTC/USDT", "buy", btc_qty, self._spot_market_buy_price("BTC/USDT"))
-        self._assert_order_caps([first])
+        self._assert_order_caps([first], strategy_name=strategy_name)
         orders = [self._submit_wait_close(first)]
         if not _order_completed(orders[-1], first):
             return orders, "aborted_unwound", _abort_reason(first, orders[-1])
@@ -309,7 +317,7 @@ class StrategyDemoExecutionService:
         )
         eth_qty = (btc_available_for_eth / eth_btc_price).quantize(Decimal("0.000001"), rounding=ROUND_DOWN)
         second = DemoExecutionSpec("spot", "ETH/BTC", "buy", eth_qty, eth_btc_price)
-        self._assert_order_caps([second])
+        self._assert_order_caps([second], strategy_name=strategy_name)
         orders.append(self._submit_wait_close(second))
         if not _order_completed(orders[-1], second):
             abort_reason = _abort_reason(second, orders[-1])
@@ -321,7 +329,7 @@ class StrategyDemoExecutionService:
             rounding=ROUND_DOWN,
         )
         third = DemoExecutionSpec("spot", "ETH/USDT", "sell", eth_sell_qty, self._spot_market_sell_price("ETH/USDT"))
-        self._assert_order_caps([third])
+        self._assert_order_caps([third], strategy_name=strategy_name)
         orders.append(self._submit_wait_close(third))
         if not _order_completed(orders[-1], third):
             abort_reason = _abort_reason(third, orders[-1])
@@ -364,7 +372,7 @@ class StrategyDemoExecutionService:
         if strategy_name in DIRECTIONAL_DEMO_STRATEGIES:
             return self._preview_directional_lifecycle(strategy_name, context or {})
         specs = self._order_specs(strategy_name)
-        self._assert_order_caps(specs)
+        self._assert_order_caps(specs, strategy_name=strategy_name)
         expected_specs = [replace(spec, price=self._expected_fill_price(spec)) for spec in specs]
         reference_prices = self._reference_prices()
         gross_pnl = _strategy_spec_gross_pnl(strategy_name, expected_specs, reference_prices)
@@ -396,6 +404,7 @@ class StrategyDemoExecutionService:
                     }
                     for spec, expected_spec in zip(specs, expected_specs, strict=True)
                 ],
+                "sizing_policy": self._demo_sizing_policy(strategy_name),
             }
         )
 
@@ -405,7 +414,7 @@ class StrategyDemoExecutionService:
         symbol = self._directional_symbol(strategy_name, context)
         position = store.get(strategy_name, symbol)
         if position is not None and position.state == "open":
-            exit_reason = self._directional_exit_reason(position)
+            exit_reason = self._directional_exit_reason(position, context)
             current_price = _price(self.provider, position.symbol)
             unrealized = (current_price - position.entry_price) * position.quantity
             if exit_reason is None:
@@ -420,11 +429,12 @@ class StrategyDemoExecutionService:
                         "net_pnl_usdt": _money(Decimal("0")),
                         "min_required_net_pnl_usdt": _money(self.settings.strategy_runtime.demo_min_preflight_net_pnl_usdt),
                         "orders": [],
+                        "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                         "open_position": position.to_dict(),
                     }
-                )
+            )
             spec = self._directional_exit_spec(position)
-            self._assert_order_caps([spec])
+            self._assert_order_caps([spec], strategy_name=strategy_name, include_directional=True)
             fee = _estimated_notional(spec, self._reference_prices()) * self.settings.arbitrage.taker_fee_pct
             net_pnl = unrealized - fee
             return to_jsonable(
@@ -438,11 +448,12 @@ class StrategyDemoExecutionService:
                     "net_pnl_usdt": _money(net_pnl),
                     "min_required_net_pnl_usdt": _money(self.settings.strategy_runtime.demo_min_preflight_net_pnl_usdt),
                     "orders": [self._preview_order(spec)],
+                    "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                     "open_position": position.to_dict(),
                 }
             )
         spec = self._directional_entry_spec(strategy_name, symbol)
-        self._assert_order_caps([spec])
+        self._assert_order_caps([spec], strategy_name=strategy_name, include_directional=True)
         threshold = self.settings.strategy_runtime.demo_min_preflight_net_pnl_usdt
         return to_jsonable(
             {
@@ -455,6 +466,7 @@ class StrategyDemoExecutionService:
                 "net_pnl_usdt": _money(threshold),
                 "min_required_net_pnl_usdt": _money(threshold),
                 "orders": [self._preview_order(spec)],
+                "sizing_policy": self._demo_sizing_policy(strategy_name, include_directional=True),
                 "open_position": None,
             }
         )
@@ -499,11 +511,17 @@ class StrategyDemoExecutionService:
             }
         return rows
 
-    def _assert_order_caps(self, specs: list[DemoExecutionSpec]) -> None:
+    def _assert_order_caps(
+        self,
+        specs: list[DemoExecutionSpec],
+        *,
+        strategy_name: str | None = None,
+        include_directional: bool = False,
+    ) -> None:
         """Keep demo canary orders inside runtime and agent caps."""
         max_notional = min(
             self.settings.strategy_runtime.max_position_value_usdt,
-            self.settings.strategy_runtime.demo_max_order_value_usdt,
+            self._demo_max_order_value_usdt(strategy_name or "", include_directional=include_directional),
             self.settings.agent_trading.max_autonomous_order_value_usdt,
         )
         for spec in specs:
@@ -665,13 +683,8 @@ class StrategyDemoExecutionService:
 
     def _directional_entry_spec(self, strategy_name: str, symbol: str) -> DemoExecutionSpec:
         """Return one marketable long-only spot entry spec for a directional signal."""
-        del strategy_name
         price = self._spot_market_buy_price(symbol, _price_tick(symbol))
-        max_notional = min(
-            self.settings.directional.demo_max_order_value_usdt,
-            self.settings.strategy_runtime.demo_max_order_value_usdt,
-            self.settings.agent_trading.max_autonomous_order_value_usdt,
-        )
+        max_notional = self._demo_max_order_value_usdt(strategy_name, include_directional=True)
         quantity = (max_notional / price).quantize(_quantity_step(symbol), rounding=ROUND_DOWN)
         if quantity <= 0:
             raise SafetyError(f"directional demo quantity rounds to zero for {symbol}")
@@ -687,7 +700,7 @@ class StrategyDemoExecutionService:
             self._spot_market_sell_price(position.symbol, _price_tick(position.symbol)),
         )
 
-    def _directional_exit_reason(self, position: DirectionalStoredPosition) -> str | None:
+    def _directional_exit_reason(self, position: DirectionalStoredPosition, context: dict[str, Any] | None = None) -> str | None:
         """Return the first exit trigger for an open directional position."""
         current_price = _price(self.provider, position.symbol)
         take_profit_price = position.entry_price * (Decimal("1") + position.take_profit_pct / Decimal("100"))
@@ -696,6 +709,8 @@ class StrategyDemoExecutionService:
             return "take_profit"
         if current_price <= stop_loss_price:
             return "stop_loss"
+        if _directional_context_has_exit_signal(context or {}, position.symbol):
+            return "reverse_signal"
         if position.opened_at + timedelta(minutes=position.time_limit_minutes) <= _utcnow():
             return "time_limit"
         return None
@@ -765,10 +780,65 @@ class StrategyDemoExecutionService:
             }
         )
 
+    def _directional_exit_audit(
+        self,
+        position: DirectionalStoredPosition,
+        exit_reason: str,
+        net_pnl: Decimal,
+    ) -> dict[str, Any]:
+        """Return audit hints for managed directional exits and runtime guard cooldowns."""
+        loss = net_pnl < 0
+        return to_jsonable(
+            {
+                "method": "managed_directional_exit_audit",
+                "strategy_name": position.strategy_name,
+                "symbol": position.symbol,
+                "exit_reason": exit_reason,
+                "realized_net_pnl_usdt": _money(net_pnl),
+                "loss_cooldown_recommended": loss,
+                "cooldown_reason": "managed_directional_loss" if loss else None,
+                "runtime_guard_records_loss": True,
+            }
+        )
+
+    def _demo_sizing_policy(self, strategy_name: str, *, include_directional: bool = False) -> dict[str, Any]:
+        """Return effective demo sizing controls for a strategy."""
+        max_order_value = self._demo_max_order_value_usdt(strategy_name, include_directional=include_directional)
+        effective_cap = min(
+            self.settings.strategy_runtime.max_position_value_usdt,
+            max_order_value,
+            self.settings.agent_trading.max_autonomous_order_value_usdt,
+        )
+        return to_jsonable(
+            {
+                "strategy_name": strategy_name,
+                "order_size_multiplier": self._demo_order_size_multiplier(strategy_name),
+                "max_order_value_usdt": max_order_value,
+                "effective_order_cap_usdt": effective_cap,
+                "override_applied": strategy_name in self.settings.strategy_runtime.demo_strategy_size_overrides,
+            }
+        )
+
+    def _demo_order_size_multiplier(self, strategy_name: str) -> Decimal:
+        """Return per-strategy demo quantity multiplier with global fallback."""
+        override = self.settings.strategy_runtime.demo_strategy_size_overrides.get(strategy_name)
+        return _sizing_override_decimal(override, "order_size_multiplier") or self.settings.strategy_runtime.demo_order_size_multiplier
+
+    def _demo_max_order_value_usdt(self, strategy_name: str, *, include_directional: bool = False) -> Decimal:
+        """Return per-strategy demo order notional cap constrained by global caps."""
+        max_order_value = self.settings.strategy_runtime.demo_max_order_value_usdt
+        override = self.settings.strategy_runtime.demo_strategy_size_overrides.get(strategy_name)
+        override_max = _sizing_override_decimal(override, "max_order_value_usdt")
+        if override_max is not None:
+            max_order_value = min(max_order_value, override_max)
+        if include_directional:
+            max_order_value = min(max_order_value, self.settings.directional.demo_max_order_value_usdt)
+        return max_order_value
+
     def _order_specs(self, strategy_name: str) -> list[DemoExecutionSpec]:
         """Return tiny round-trip orders for one strategy."""
         btc_usdt = _price(self.provider, "BTC/USDT")
-        multiplier = self.settings.strategy_runtime.demo_order_size_multiplier
+        multiplier = self._demo_order_size_multiplier(strategy_name)
         btc_qty = (Decimal("0.0001") * multiplier).quantize(Decimal("0.0001"), rounding=ROUND_DOWN)
         eth_qty = (btc_qty / self._spot_market_buy_price("ETH/BTC", Decimal("0.000001"))).quantize(
             Decimal("0.000001"),
@@ -1174,6 +1244,59 @@ def _quantity_step(symbol: str) -> Decimal:
     if base == "SOL":
         return Decimal("0.01")
     return Decimal("1")
+
+
+def _directional_context_has_exit_signal(context: dict[str, Any], symbol: str) -> bool:
+    """Return whether local validation context says an open long should be closed."""
+    signal = _directional_signal_from_context(context)
+    if signal is not None:
+        signal_symbol = str(signal.get("symbol") or "").upper()
+        if signal_symbol and signal_symbol != symbol.upper():
+            return False
+        action = str(signal.get("signal") or signal.get("action") or "").lower()
+        if action in {"sell", "exit", "close", "reduce"}:
+            return True
+    return "signal_sell" in _context_reasons(context)
+
+
+def _directional_signal_from_context(context: dict[str, Any]) -> dict[str, Any] | None:
+    """Extract a directional signal dictionary from direct or diagnostic context."""
+    for key in ("directional_signal", "signal"):
+        value = context.get(key)
+        if isinstance(value, dict):
+            return value
+    diagnostics = context.get("diagnostics")
+    if isinstance(diagnostics, dict):
+        best = diagnostics.get("best_candidate")
+        if isinstance(best, dict) and isinstance(best.get("signal"), dict):
+            return best["signal"]
+        candidates = diagnostics.get("candidates")
+        if isinstance(candidates, list):
+            for candidate in candidates:
+                if isinstance(candidate, dict) and isinstance(candidate.get("signal"), dict):
+                    return candidate["signal"]
+    return None
+
+
+def _context_reasons(context: dict[str, Any]) -> list[str]:
+    """Return normalized context reason codes."""
+    raw = context.get("reasons", [])
+    values = raw if isinstance(raw, list) else [raw]
+    return [str(value) for value in values if value is not None]
+
+
+def _sizing_override_decimal(override: object, field_name: str) -> Decimal | None:
+    """Return a Decimal value from a sizing override model or dictionary."""
+    if override is None:
+        return None
+    value: object
+    if isinstance(override, dict):
+        value = override.get(field_name)
+    else:
+        value = getattr(override, field_name, None)
+    if value is None:
+        return None
+    return Decimal(str(value))
 
 
 def _directional_profile(strategy_name: str) -> dict[str, Decimal | int]:

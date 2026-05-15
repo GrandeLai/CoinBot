@@ -14,6 +14,7 @@ from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.strategies.candidate_backtest import StrategyCandidateBacktestService
 from trading_assistant.strategies.market_regime import classify_candle_regime
 from trading_assistant.strategies.policy import StrategyPolicy
+from trading_assistant.strategies.preflight_buffer import AdaptivePreflightBufferService
 from trading_assistant.strategies.registry import StrategyRegistry
 from trading_assistant.strategies.retrospective import MANUAL_END, MANUAL_START, StrategyRetrospectiveService
 from trading_assistant.strategies.revival import StrategyRevivalWindowService
@@ -129,6 +130,82 @@ def test_strategy_runner_skips_unprofitable_demo_preflight_without_ordering(tmp_
     assert result.results[0].risk_reasons == ["demo_preflight_not_profitable"]
     assert result.results[0].net_profit == Decimal("-0.01")
     assert demo_executor.execute_calls == []
+
+
+def test_strategy_runner_blocks_demo_when_adaptive_preflight_buffer_not_met(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    settings.strategy_runtime.runtime_guard_path = str(tmp_path / "strategy-runtime-guard.json")
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_enabled = True
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_min_samples = 2
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_quantile_pct = Decimal("100")
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_lookback = 10
+    _write_preflight_gap_samples(Path(settings.strategy_runtime.journal_path), "cross-exchange")
+    settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
+    settings.exchanges["okx"] = ExchangeConfig(enabled=True, sandbox=True, adapter="okx", okx_demo=True)
+    settings.agent_trading = AgentTradingConfig(enabled=True, allow_demo_orders=True)
+    demo_executor = FakePreflightDemoExecutor(approved=True, net_pnl="0.03")
+    runner = StrategyRunner(settings, ExchangeFactory(settings), demo_executor=demo_executor)
+
+    result = runner.run(strategy_name="cross-exchange", max_cycles=1, interval_seconds=0, execution_mode="demo")
+
+    preflight = result.results[0].execution["preflight"]
+    assert result.results[0].decision == "skipped"
+    assert result.results[0].risk_reasons == ["demo_preflight_buffer_not_met"]
+    assert Decimal(str(preflight["min_required_net_pnl_usdt"])) == Decimal("0.040000")
+    assert preflight["adaptive_preflight_buffer"]["sample_count"] == 3
+    assert preflight["adaptive_preflight_buffer"]["buffer_usdt"] == "0.040000"
+    assert demo_executor.execute_calls == []
+
+
+def test_strategy_runner_allows_demo_when_adaptive_preflight_buffer_is_met(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    settings.strategy_runtime.runtime_guard_path = str(tmp_path / "strategy-runtime-guard.json")
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_enabled = True
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_min_samples = 2
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_quantile_pct = Decimal("100")
+    settings.strategy_runtime.demo_preflight_adaptive_buffer_lookback = 10
+    _write_preflight_gap_samples(Path(settings.strategy_runtime.journal_path), "cross-exchange")
+    settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
+    settings.exchanges["okx"] = ExchangeConfig(enabled=True, sandbox=True, adapter="okx", okx_demo=True)
+    settings.agent_trading = AgentTradingConfig(enabled=True, allow_demo_orders=True)
+    demo_executor = FakePreflightDemoExecutor(approved=True, net_pnl="0.05")
+    runner = StrategyRunner(settings, ExchangeFactory(settings), demo_executor=demo_executor)
+
+    result = runner.run(strategy_name="cross-exchange", max_cycles=1, interval_seconds=0, execution_mode="demo")
+
+    preflight = result.results[0].execution["preflight"]
+    assert result.results[0].decision == "executed"
+    assert result.results[0].risk_reasons == []
+    assert Decimal(str(preflight["min_required_net_pnl_usdt"])) == Decimal("0.040000")
+    assert preflight["adaptive_preflight_buffer"]["buffer_usdt"] == "0.040000"
+    assert demo_executor.execute_calls == ["cross-exchange"]
+
+
+def test_adaptive_preflight_buffer_skips_directional_lifecycle_previews(tmp_path: Path) -> None:
+    config = StrategyRuntimeConfig(journal_path=str(tmp_path / "strategy-events.jsonl"))
+    config.demo_preflight_adaptive_buffer_enabled = True
+    config.demo_preflight_adaptive_buffer_min_samples = 1
+    _write_preflight_gap_samples(Path(config.journal_path), "trend-breakout")
+    service = AdaptivePreflightBufferService(config)
+
+    preview = service.apply(
+        "trend-breakout",
+        {
+            "strategy_name": "trend-breakout",
+            "strategy_family": "directional",
+            "approved": True,
+            "reason": "directional_entry_gate_passed",
+            "net_pnl_usdt": "0.000000",
+            "min_required_net_pnl_usdt": "0.000000",
+        },
+    )
+
+    assert preview["approved"] is True
+    assert preview["reason"] == "directional_entry_gate_passed"
+    assert preview["adaptive_preflight_buffer"]["applied"] is False
+    assert preview["adaptive_preflight_buffer"]["reason"] == "directional_preview"
 
 
 def test_strategy_runner_requires_local_validation_before_demo_orders(tmp_path: Path) -> None:
@@ -464,6 +541,29 @@ def test_strategy_demo_execution_service_uses_demo_order_size_multiplier() -> No
     assert result["net_pnl_usdt"] == "-0.064000"
 
 
+def test_strategy_demo_execution_service_uses_strategy_size_override() -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
+    settings.exchanges["okx"] = ExchangeConfig(enabled=True, sandbox=True, adapter="okx", okx_demo=True)
+    settings.agent_trading = AgentTradingConfig(enabled=True, allow_demo_orders=True)
+    settings.strategy_runtime.demo_order_size_multiplier = Decimal("3")
+    settings.strategy_runtime.demo_strategy_size_overrides = {
+        "cross-exchange": {
+            "order_size_multiplier": Decimal("1"),
+            "max_order_value_usdt": Decimal("10"),
+        }
+    }
+    service = StrategyDemoExecutionService(settings, provider=FakeFilledDemoProvider())
+
+    result = service.execute("cross-exchange")
+
+    orders = result["orders"]
+    assert orders[0]["quantity"] == "0.0001"
+    assert orders[1]["quantity"] == "0.0001"
+    assert result["sizing_policy"]["order_size_multiplier"] == "1"
+    assert result["sizing_policy"]["max_order_value_usdt"] == "10"
+
+
 def test_strategy_demo_execution_service_supports_carry_and_basis_canaries() -> None:
     settings = load_settings(EXAMPLE_CONFIG)
     settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
@@ -533,6 +633,37 @@ def test_directional_demo_execution_closes_position_on_take_profit(tmp_path: Pat
     assert state["positions"]["trend-breakout|BTC/USDT"]["state"] == "closed"
 
 
+def test_directional_demo_execution_closes_position_on_reverse_signal_with_loss_audit(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
+    settings.exchanges["okx"] = ExchangeConfig(enabled=True, sandbox=True, adapter="okx", okx_demo=True)
+    settings.agent_trading = AgentTradingConfig(enabled=True, allow_demo_orders=True, strategy_allowlist=["trend-breakout"])
+    settings.directional.position_state_path = str(tmp_path / "directional-positions.json")
+    provider = FakeDirectionalLifecycleProvider(price=Decimal("80000"))
+    service = StrategyDemoExecutionService(settings, provider=provider)
+    context = {"selected_opportunity_id": "directional-trend-breakout-btc-usdt"}
+    service.execute("trend-breakout", context=context)
+    provider.price = Decimal("79950")
+    exit_context = {
+        **context,
+        "directional_signal": {"symbol": "BTC/USDT", "signal": "sell"},
+    }
+
+    preview = service.preview("trend-breakout", context=exit_context)
+    result = service.execute("trend-breakout", context=exit_context)
+
+    assert preview["approved"] is True
+    assert preview["reason"] == "directional_exit_reverse_signal"
+    assert result["status"] == "closed"
+    assert [order["side"] for order in result["orders"]] == ["sell"]
+    assert result["position_lifecycle"]["exit_reason"] == "reverse_signal"
+    assert Decimal(str(result["net_pnl_usdt"])) < Decimal("0")
+    assert result["managed_exit_audit"]["exit_reason"] == "reverse_signal"
+    assert result["managed_exit_audit"]["loss_cooldown_recommended"] is True
+    assert result["managed_exit_audit"]["cooldown_reason"] == "managed_directional_loss"
+    assert result["managed_exit_audit"]["runtime_guard_records_loss"] is True
+
+
 def test_directional_demo_preview_holds_existing_position_before_exit(tmp_path: Path) -> None:
     settings = load_settings(EXAMPLE_CONFIG)
     settings.trading = TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False)
@@ -549,6 +680,39 @@ def test_directional_demo_preview_holds_existing_position_before_exit(tmp_path: 
     assert preview["approved"] is False
     assert preview["reason"] == "directional_position_hold"
     assert preview["open_position"]["state"] == "open"
+
+
+def test_strategy_runner_allows_directional_reverse_signal_exit_when_local_buy_gate_fails(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    settings.strategy_runtime.runtime_guard_path = str(tmp_path / "strategy-runtime-guard.json")
+    fake_executor = FakeDirectionalReverseExitExecutor()
+    runner = StrategyRunner(settings, ExchangeFactory(settings), demo_executor=fake_executor)
+
+    def local_sell_gate(_definition, _symbol: str) -> dict[str, object]:
+        return {
+            "approved": False,
+            "layer": "local",
+            "reasons": ["signal_sell"],
+            "opportunities_found": 0,
+            "selected_opportunity_id": None,
+            "directional_signal": {"symbol": "BTC/USDT", "signal": "sell"},
+        }
+
+    monkeypatch.setattr(runner, "_demo_local_validation_gate", local_sell_gate)
+
+    result = runner.run(strategy_name="trend-breakout", max_cycles=1, interval_seconds=0, execution_mode="demo")
+
+    cycle = result.results[0]
+    assert cycle.decision == "executed"
+    assert cycle.risk_reasons == []
+    assert cycle.execution is not None
+    assert cycle.execution["preflight"]["reason"] == "directional_exit_reverse_signal"
+    assert cycle.execution["net_pnl_usdt"] == "-0.100000"
+    assert fake_executor.preview_contexts[0]["directional_signal"]["signal"] == "sell"
 
 
 def test_strategy_review_suggests_learning_adjustments_from_journal(tmp_path: Path) -> None:
@@ -1605,6 +1769,31 @@ class FakeAccountModeProvider(FakeDemoProvider):
         return []
 
 
+def _write_preflight_gap_samples(path: Path, strategy_name: str) -> None:
+    """Write executed demo samples whose preflight estimate exceeded cash-flow PnL."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = [
+        ("0.060000", "0.020000"),
+        ("0.050000", "0.010000"),
+        ("0.040000", "0.020000"),
+    ]
+    events = [
+        {
+            "event": "strategy_cycle",
+            "strategy_name": strategy_name,
+            "execution_mode": "demo",
+            "decision": "executed",
+            "net_profit": actual,
+            "execution": {
+                "preflight": {"net_pnl_usdt": expected},
+                "pnl_validation": {"cash_flow_net_pnl_usdt": actual, "within_tolerance": True},
+            },
+        }
+        for expected, actual in rows
+    ]
+    path.write_text("\n".join(json.dumps(event, sort_keys=True) for event in events) + "\n", encoding="utf-8")
+
+
 class FakeDemoExecutor:
     """Fake demo executor for runner tests."""
 
@@ -1942,6 +2131,44 @@ class FakeDirectionalLifecycleProvider(FakeReceiptDemoProvider):
                     "data": [{"bids": [[str(bid), "10"]], "asks": [[str(ask), "10"]]}],
                 }
         return super()._get(path, params=params, signed=signed)
+
+
+class FakeDirectionalReverseExitExecutor:
+    """Fake demo executor that previews and executes a managed directional reverse-signal exit."""
+
+    def __init__(self) -> None:
+        self.preview_contexts: list[dict[str, object]] = []
+        self.execute_contexts: list[dict[str, object]] = []
+
+    def preview(self, strategy_name: str, context: dict[str, object] | None = None) -> dict[str, object]:
+        self.preview_contexts.append(dict(context or {}))
+        return {
+            "strategy_name": strategy_name,
+            "strategy_family": "directional",
+            "approved": True,
+            "reason": "directional_exit_reverse_signal",
+            "gross_pnl_usdt": "-0.080000",
+            "estimated_fee_usdt": "0.020000",
+            "net_pnl_usdt": "-0.100000",
+            "orders": [{"side": "sell"}],
+        }
+
+    def execute(self, strategy_name: str, context: dict[str, object] | None = None) -> dict[str, object]:
+        self.execute_contexts.append(dict(context or {}))
+        return {
+            "strategy_name": strategy_name,
+            "strategy_family": "directional",
+            "status": "closed",
+            "demo_orders_sent": True,
+            "live_orders_sent": False,
+            "net_pnl_usdt": "-0.100000",
+            "orders": [{"side": "sell"}],
+            "managed_exit_audit": {
+                "exit_reason": "reverse_signal",
+                "loss_cooldown_recommended": True,
+                "runtime_guard_records_loss": True,
+            },
+        }
 
 
 class FakeProviderOrder:
