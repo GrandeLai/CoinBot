@@ -234,9 +234,14 @@ uv run crypto-assistant strategy pnl-attribution \
   --strategy all \
   --limit 50 \
   --json
+
+uv run crypto-assistant strategy hedged-maker-report \
+  --config ../configs/config.example.yaml \
+  --limit 50 \
+  --json
 ```
 
-`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance.
+`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state.
 
 ## Strategy Families
 
@@ -300,9 +305,14 @@ uv run crypto-assistant strategy run \
   --interval-seconds 0 \
   --execution-mode paper \
   --json
+
+uv run crypto-assistant strategy hedged-maker-report \
+  --config ../configs/config.example.yaml \
+  --limit 50 \
+  --json
 ```
 
-`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
+`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. `hedged-maker-report` reads the journal and paper state without touching exchanges, then summarizes fill events, lifecycle counts, adverse-selection rate, simulated PnL, and active quote state. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
 
 Directional exit tuning is also read-only:
 
@@ -448,7 +458,7 @@ uv run crypto-assistant strategy promotion-status \
 | Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
-| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
+| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
 | Backtest/report/workflow | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
 

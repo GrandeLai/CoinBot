@@ -738,6 +738,16 @@ hedged_maker:
     assert (tmp_path / "hedged-maker-paper-state.json").exists()
     assert payload["retrospective_after"]["open_issue_count"] == 0
 
+    code, payload = _invoke(["strategy", "hedged-maker-report", "--config", str(config_path), "--limit", "10"], capsys)
+    assert code == 0
+    report = payload["strategy_hedged_maker_report"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["scanned_events"] == 1
+    assert report["summary"]["lifecycle_counts"]["quoted"] == 1
+    assert report["summary"]["active_state_orders"] == 1
+
 
 def test_cli_strategy_retrospective_empty_history(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "strategy.yaml"
@@ -771,6 +781,12 @@ strategy_runtime:
     pnl_help_output = capsys.readouterr()
     assert pnl_help_exit.value.code == 0
     assert "--execution-mode" in pnl_help_output.out
+
+    with pytest.raises(SystemExit) as hedged_maker_report_help_exit:
+        main(["strategy", "hedged-maker-report", "--help"])
+    hedged_maker_report_help_output = capsys.readouterr()
+    assert hedged_maker_report_help_exit.value.code == 0
+    assert "--limit" in hedged_maker_report_help_output.out
 
     with pytest.raises(SystemExit) as operator_brief_help_exit:
         main(["strategy", "operator-brief", "--help"])

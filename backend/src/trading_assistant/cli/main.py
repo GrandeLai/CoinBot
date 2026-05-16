@@ -344,6 +344,11 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_pnl_attribution.add_argument("--limit", type=int, default=50, help="Number of latest matching journal events to include")
     _add_json(strategy_pnl_attribution)
     strategy_pnl_attribution.set_defaults(handler=_handle_strategy_pnl_attribution)
+    strategy_hedged_maker_report = strategy_sub.add_parser("hedged-maker-report", help="Show read-only hedged-maker paper evaluation report")
+    strategy_hedged_maker_report.add_argument("--config", help="Path to YAML config")
+    strategy_hedged_maker_report.add_argument("--limit", type=int, default=50, help="Number of latest hedged-maker paper events to include")
+    _add_json(strategy_hedged_maker_report)
+    strategy_hedged_maker_report.set_defaults(handler=_handle_strategy_hedged_maker_report)
     strategy_carry_basis_optimize = strategy_sub.add_parser("carry-basis-optimize", help="Show read-only carry/basis optimization diagnostics")
     strategy_carry_basis_optimize.add_argument("--config", help="Path to YAML config")
     strategy_carry_basis_optimize.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
@@ -803,6 +808,16 @@ def _handle_strategy_pnl_attribution(args: argparse.Namespace) -> tuple[dict[str
     return payload, (
         f"strategy_pnl_attribution entries={summary['total_entries']} "
         f"cash_flow={summary['strategy_cash_flow_net_pnl_usdt']}"
+    )
+
+
+def _handle_strategy_hedged_maker_report(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_hedged_maker_report(limit=args.limit)
+    report = payload["strategy_hedged_maker_report"]
+    summary = report["summary"]
+    return payload, (
+        f"strategy_hedged_maker_report events={report['scanned_events']} "
+        f"fills={summary['fill_events']} adverse={summary['adverse_selection_events']}"
     )
 
 

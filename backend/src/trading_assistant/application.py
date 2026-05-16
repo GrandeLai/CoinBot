@@ -30,6 +30,7 @@ from trading_assistant.strategies.demo_validation import StrategyDemoValidationS
 from trading_assistant.strategies.evolution import StrategyEvolutionService
 from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
 from trading_assistant.strategies.guard import StrategyRuntimeGuard
+from trading_assistant.strategies.hedged_maker_report import HedgedMakerPaperEvaluationReportService
 from trading_assistant.strategies.market_compare import StrategyMarketComparisonService
 from trading_assistant.strategies.market_regime import StrategyMarketRegimeService
 from trading_assistant.strategies.models import ExecutionMode
@@ -540,6 +541,11 @@ class TradingAssistantApp:
             limit=limit,
         )
         return {"strategy_pnl_attribution": report.to_dict()}
+
+    def strategy_hedged_maker_report(self, limit: int = 50) -> dict[str, Any]:
+        """Return read-only hedged-maker paper lifecycle evaluation evidence."""
+        report = HedgedMakerPaperEvaluationReportService(self.settings).report(limit=limit)
+        return {"strategy_hedged_maker_report": report.to_dict()}
 
     def strategy_operator_brief(
         self,
