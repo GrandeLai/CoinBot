@@ -19,6 +19,7 @@ from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.exceptions import ConfigError
 from trading_assistant.strategies.hedged_maker import HedgedMakerStrategyService
 from trading_assistant.strategies.range_grid import RangeGridStrategyService
+from trading_assistant.strategies.smart_dca import SmartDcaStrategyService
 
 
 class ArbitrageScanner:
@@ -62,6 +63,8 @@ class ArbitrageScanner:
                 return FuturesPerpBasisScanner(self.settings, self.exchanges).scan(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
             case "range-grid":
                 return RangeGridStrategyService(self.settings, self.exchanges).scan(symbol or self.settings.range_grid.symbols[0], exchange=exchange)
+            case "smart-dca" | "smart-dca-basket":
+                return SmartDcaStrategyService(self.settings, self.exchanges).scan(symbol or self.settings.smart_dca.symbols[0], exchange=exchange)
             case "hedged-maker":
                 return HedgedMakerStrategyService(self.settings, self.exchanges).scan(
                     symbol or self.settings.hedged_maker.symbols[0],
@@ -88,6 +91,8 @@ class ArbitrageScanner:
                 return FuturesPerpBasisScanner(self.settings, self.exchanges).diagnose(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
             case "range-grid":
                 return RangeGridStrategyService(self.settings, self.exchanges).diagnose(symbol or self.settings.range_grid.symbols[0], exchange=exchange)
+            case "smart-dca" | "smart-dca-basket":
+                return SmartDcaStrategyService(self.settings, self.exchanges).diagnose(symbol or self.settings.smart_dca.symbols[0], exchange=exchange)
             case "hedged-maker":
                 return HedgedMakerStrategyService(self.settings, self.exchanges).diagnose(
                     symbol or self.settings.hedged_maker.symbols[0],

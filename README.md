@@ -251,6 +251,7 @@ uv run crypto-assistant strategy hedged-maker-report \
 | Triangular arbitrage | `triangular-multi-route` plus aliases `triangular` | Read-only discovery, paper, then OKX demo sampling when gates pass. |
 | Carry and basis | `funding-carry-hedged`, `spot-perp-carry`, `futures-perp-basis` | Offline diagnostics and paper until economics beat fees, slippage, holding cost, and basis hedge cost. |
 | Range grid | `range-grid` | Paper-only range-bound grid opportunity estimates; OKX Demo and live orders are not supported. |
+| Smart DCA basket | `smart-dca-basket` plus alias `smart-dca` | Paper-only drawdown-tiered accumulation and basket weight-band diagnostics for BTC/ETH/SOL. |
 | Hedged maker / XEMM | `hedged-maker` | Paper passive quote planner with taker hedge preview; an explicit OKX Demo manager exists for approved opportunity files, while live maker orders are not supported. |
 | Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
 
@@ -286,6 +287,28 @@ uv run crypto-assistant strategy run \
 ```
 
 `range-grid` builds a bounded ladder from completed candles, estimates completed grid cycles after fee and slippage costs, and emits simulated buy/sell legs for the existing risk, budget, paper execution, journal, and scoring paths. It reports `paper_only=true`; it is deliberately excluded from OKX Demo and live execution until a separate stateful order manager is implemented and sandbox-tested.
+
+Smart DCA basket validation looks for major-asset accumulation opportunities when a configured symbol has pulled back from its recent completed-candle high and is not overweight versus the target basket:
+
+```bash
+uv run crypto-assistant strategy scan \
+  --config ../configs/config.example.yaml \
+  --strategy smart-dca-basket \
+  --symbol SOL/USDT \
+  --exchange mock \
+  --json
+
+uv run crypto-assistant strategy run \
+  --config ../configs/config.example.yaml \
+  --strategy smart-dca-basket \
+  --symbol SOL/USDT \
+  --max-cycles 1 \
+  --interval-seconds 0 \
+  --execution-mode paper \
+  --json
+```
+
+`smart-dca-basket` calculates recent drawdown, applies drawdown-tier size multipliers, checks quote balance and ask-side depth, compares current basket weight against `smart_dca.target_weights_pct`, and emits one simulated spot buy leg when the expected discount remains positive after fee and slippage assumptions. It is portfolio-management evidence, not guaranteed alpha: the reported net edge is an estimated discount/accumulation edge. The strategy is registered with `demo_supported=false` and `live_supported=false`.
 
 Hedged-maker/XEMM validation plans a passive maker quote and an immediate hedge preview:
 

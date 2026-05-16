@@ -30,10 +30,19 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
 
     names = {strategy["name"] for strategy in catalog["strategies"]}
 
-    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis", "range-grid", "hedged-maker"}
+    assert names >= {
+        "triangular-multi-route",
+        "funding-carry-hedged",
+        "spot-perp-carry",
+        "futures-perp-basis",
+        "range-grid",
+        "hedged-maker",
+        "smart-dca-basket",
+    }
     assert catalog["aliases"]["triangular"] == "triangular-multi-route"
     assert catalog["aliases"]["funding-rate"] == "funding-carry-hedged"
     assert catalog["aliases"]["spot-perp"] == "spot-perp-carry"
+    assert catalog["aliases"]["smart-dca"] == "smart-dca-basket"
     assert registry.get("triangular").scanner_type == "triangular-multi-route"
     assert registry.demo_validation_names()[:5] == [
         "cross-exchange",
@@ -46,6 +55,7 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
     assert "orderbook-imbalance-scalp" not in registry.demo_validation_names()
     assert "range-grid" not in registry.demo_validation_names()
     assert "hedged-maker" not in registry.demo_validation_names()
+    assert "smart-dca-basket" not in registry.demo_validation_names()
 
 
 def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> None:
@@ -68,6 +78,7 @@ def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> Non
         "orderbook-imbalance-scalp",
         "range-grid",
         "hedged-maker",
+        "smart-dca-basket",
     }
     assert all(report.status == "active" for report in reports)
     assert sum(len(report.opportunities) for report in reports) >= 5
@@ -89,6 +100,29 @@ def test_strategy_controller_scans_range_grid_when_regime_is_range(tmp_path: Pat
     assert report.opportunities[0].metadata["paper_only"] is True
     assert report.diagnostics["approved"] is True
     assert report.diagnostics["regime"] == "range"
+
+
+def test_strategy_controller_scans_smart_dca_basket(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.smart_dca.min_drawdown_pct = Decimal("1")
+    settings.smart_dca.target_weights_pct = {
+        "BTC/USDT": Decimal("60"),
+        "ETH/USDT": Decimal("25"),
+        "SOL/USDT": Decimal("15"),
+    }
+
+    report = StrategyController(settings, ExchangeFactory(settings)).scan(
+        strategy_name="smart-dca-basket",
+        symbol="BTC/USDT",
+        exchange="mock",
+    )[0]
+
+    assert report.strategy_name == "smart-dca-basket"
+    assert report.opportunities
+    assert report.opportunities[0].metadata["paper_only"] is True
+    assert report.diagnostics["approved"] is True
+    assert report.diagnostics["basket"]["rebalance_action"] == "accumulate_underweight"
 
 
 def test_triangular_route_discovery_expands_and_explains_mock_routes(tmp_path: Path) -> None:

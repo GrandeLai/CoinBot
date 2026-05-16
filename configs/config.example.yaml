@@ -198,6 +198,35 @@ range_grid:
   fee_pct: "0.001"
   slippage_pct: "0.0002"
 
+smart_dca:
+  enabled: true
+  exchange: mock
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+    - SOL/USDT
+  base_order_usdt: "25"
+  max_cycle_quote_usdt: "100"
+  drawdown_lookback_candles: 48
+  min_drawdown_pct: "2"
+  drawdown_tiers_pct:
+    - "2"
+    - "5"
+    - "10"
+  tier_multipliers:
+    - "1"
+    - "1.5"
+    - "2"
+  target_weights_pct:
+    BTC/USDT: "50"
+    ETH/USDT: "30"
+    SOL/USDT: "20"
+  rebalance_band_pct: "5"
+  underweight_boost_multiplier: "1.25"
+  fee_pct: "0.001"
+  slippage_pct: "0.0002"
+  min_depth_usdt: "1000"
+
 hedged_maker:
   enabled: true
   maker_exchange: mock
@@ -239,6 +268,7 @@ strategy_runtime:
     - momentum-rotation
     - orderbook-imbalance-scalp
     - range-grid
+    - smart-dca-basket
     - hedged-maker
   portfolio_max_concurrent_strategies: 3
   portfolio_min_score: "50"

@@ -702,6 +702,71 @@ strategy_runtime:
     assert result["execution"]["dry_run"] is True
 
 
+def test_cli_strategy_smart_dca_scans_and_runs_in_paper(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "smart-dca.yaml"
+    config_path.write_text(
+        f"""
+smart_dca:
+  min_drawdown_pct: "1"
+  target_weights_pct:
+    BTC/USDT: "60"
+    ETH/USDT: "25"
+    SOL/USDT: "15"
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        ["strategy", "scan", "--config", str(config_path), "--strategy", "smart-dca-basket", "--symbol", "BTC/USDT", "--exchange", "mock"],
+        capsys,
+    )
+    assert code == 0
+    report = payload["strategy_scan"][0]
+    assert report["strategy_name"] == "smart-dca-basket"
+    assert report["opportunities"]
+    assert report["opportunities"][0]["metadata"]["paper_only"] is True
+    assert Decimal(report["opportunities"][0]["metadata"]["dca_order"]["drawdown_pct"]) > Decimal("1")
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "run",
+            "--config",
+            str(config_path),
+            "--strategy",
+            "smart-dca-basket",
+            "--symbol",
+            "BTC/USDT",
+            "--max-cycles",
+            "1",
+            "--interval-seconds",
+            "0",
+            "--execution-mode",
+            "paper",
+        ],
+        capsys,
+    )
+    assert code == 0
+    result = payload["strategy_run"]["results"][0]
+    assert result["strategy_name"] == "smart-dca-basket"
+    assert result["decision"] == "executed"
+    assert result["execution"]["dry_run"] is True
+
+    code, payload = _invoke(
+        ["arbitrage", "scan", "--type", "smart-dca-basket", "--symbol", "SOL/USDT", "--exchange", "mock"],
+        capsys,
+    )
+    assert code == 0
+    assert payload["opportunities"][0]["strategy_type"] == "smart-dca-basket"
+
+
 def test_cli_strategy_hedged_maker_scans_and_runs_in_paper(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "hedged-maker.yaml"
     config_path.write_text(

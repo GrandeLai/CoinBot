@@ -446,6 +446,97 @@ class RangeGridConfig(BaseModel):
         return value
 
 
+class SmartDcaConfig(BaseModel):
+    """Paper-only Smart DCA / basket rebalancer controls."""
+
+    enabled: bool = True
+    exchange: str = "mock"
+    symbols: list[str] = Field(default_factory=lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT"])
+    base_order_usdt: Decimal = Decimal("25")
+    max_cycle_quote_usdt: Decimal = Decimal("100")
+    drawdown_lookback_candles: int = 48
+    min_drawdown_pct: Decimal = Decimal("2")
+    drawdown_tiers_pct: list[Decimal] = Field(default_factory=lambda: [Decimal("2"), Decimal("5"), Decimal("10")])
+    tier_multipliers: list[Decimal] = Field(default_factory=lambda: [Decimal("1"), Decimal("1.5"), Decimal("2")])
+    target_weights_pct: dict[str, Decimal] = Field(
+        default_factory=lambda: {
+            "BTC/USDT": Decimal("50"),
+            "ETH/USDT": Decimal("30"),
+            "SOL/USDT": Decimal("20"),
+        }
+    )
+    rebalance_band_pct: Decimal = Decimal("5")
+    underweight_boost_multiplier: Decimal = Decimal("1.25")
+    fee_pct: Decimal = Decimal("0.001")
+    slippage_pct: Decimal = Decimal("0.0002")
+    min_depth_usdt: Decimal = Decimal("1000")
+
+    @field_validator("base_order_usdt", "max_cycle_quote_usdt", "min_depth_usdt")
+    @classmethod
+    def positive_smart_dca_money(cls, value: Decimal) -> Decimal:
+        """Require positive Smart DCA money/depth controls."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("drawdown_lookback_candles")
+    @classmethod
+    def positive_smart_dca_lookback(cls, value: int) -> int:
+        """Require a positive drawdown lookback."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("min_drawdown_pct", "rebalance_band_pct", "fee_pct", "slippage_pct")
+    @classmethod
+    def non_negative_smart_dca_thresholds(cls, value: Decimal) -> Decimal:
+        """Require non-negative Smart DCA thresholds."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+    @field_validator("drawdown_tiers_pct")
+    @classmethod
+    def non_negative_smart_dca_tiers(cls, value: list[Decimal]) -> list[Decimal]:
+        """Require non-empty non-negative drawdown tiers."""
+        if not value or any(item < 0 for item in value):
+            raise ValueError("must contain non-negative values")
+        return value
+
+    @field_validator("tier_multipliers")
+    @classmethod
+    def positive_smart_dca_multipliers(cls, value: list[Decimal]) -> list[Decimal]:
+        """Require non-empty positive tier multipliers."""
+        if not value or any(item <= 0 for item in value):
+            raise ValueError("must contain positive values")
+        return value
+
+    @field_validator("target_weights_pct")
+    @classmethod
+    def positive_smart_dca_targets(cls, value: dict[str, Decimal]) -> dict[str, Decimal]:
+        """Require non-empty positive target weights."""
+        if not value or any(weight <= 0 for weight in value.values()):
+            raise ValueError("must contain positive target weights")
+        return value
+
+    @field_validator("underweight_boost_multiplier")
+    @classmethod
+    def minimum_smart_dca_underweight_boost(cls, value: Decimal) -> Decimal:
+        """Require the underweight boost to preserve or increase base size."""
+        if value < Decimal("1"):
+            raise ValueError("must be at least 1")
+        return value
+
+    @model_validator(mode="after")
+    def validate_smart_dca_shape(self) -> "SmartDcaConfig":
+        """Validate cross-field Smart DCA controls."""
+        if self.max_cycle_quote_usdt < self.base_order_usdt:
+            raise ValueError("max_cycle_quote_usdt must be at least base_order_usdt")
+        if len(self.drawdown_tiers_pct) != len(self.tier_multipliers):
+            raise ValueError("drawdown_tiers_pct and tier_multipliers must have the same length")
+        return self
+
+
 class HedgedMakerConfig(BaseModel):
     """Paper-only hedged maker / XEMM strategy controls."""
 
@@ -558,6 +649,7 @@ class StrategyRuntimeConfig(BaseModel):
             "momentum-rotation",
             "orderbook-imbalance-scalp",
             "range-grid",
+            "smart-dca-basket",
             "hedged-maker",
         ]
     )
@@ -716,6 +808,7 @@ class Settings(BaseModel):
     universe: UniverseConfig = Field(default_factory=UniverseConfig)
     exit_optimization: ExitOptimizationConfig = Field(default_factory=ExitOptimizationConfig)
     range_grid: RangeGridConfig = Field(default_factory=RangeGridConfig)
+    smart_dca: SmartDcaConfig = Field(default_factory=SmartDcaConfig)
     hedged_maker: HedgedMakerConfig = Field(default_factory=HedgedMakerConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     strategy_runtime: StrategyRuntimeConfig = Field(default_factory=StrategyRuntimeConfig)

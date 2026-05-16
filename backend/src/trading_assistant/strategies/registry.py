@@ -137,6 +137,18 @@ class StrategyRegistry:
                 live_supported=False,
                 notes="Paper-only first release; OKX demo grid orders require a separate stateful order manager and are intentionally disabled.",
             ),
+            "smart-dca-basket": StrategyDefinition(
+                name="smart-dca-basket",
+                scanner_type="smart-dca-basket",
+                description="Paper-only Smart DCA basket strategy using drawdown tiers, basket weight bands, and liquidity/cost filters.",
+                category="portfolio",
+                required_markets=["spot", "candles", "orderbook", "balance"],
+                risk_level="low",
+                aliases=["smart-dca"],
+                demo_supported=False,
+                live_supported=False,
+                notes="Paper-only accumulation and rebalance planner; demo/live order dispatch is intentionally disabled.",
+            ),
             "hedged-maker": StrategyDefinition(
                 name="hedged-maker",
                 scanner_type="hedged-maker",

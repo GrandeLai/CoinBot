@@ -40,6 +40,8 @@
 - [x] `docs/plan/2026-05-09-refactor/78-hedged-maker-budget-state-report.md`
 - [x] `docs/plan/2026-05-09-refactor/79-hedged-maker-okx-demo-manager-plan.md`
 - [x] `docs/plan/2026-05-09-refactor/80-hedged-maker-okx-demo-manager-report.md`
+- [x] `docs/plan/2026-05-09-refactor/81-smart-dca-basket-plan.md`
+- [x] `docs/plan/2026-05-09-refactor/82-smart-dca-basket-report.md`
 - [x] `docs/plan/2026-05-09-refactor/99-final-acceptance-report.md`
 - [x] `configs/config.example.yaml`
 - [x] `.env.example`
@@ -112,6 +114,7 @@
 - [x] Dynamic universe and regime reports filter configured symbols by spread, volume, depth, and completed-candle behavior without sending orders.
 - [x] Triple-barrier exit optimization simulates take-profit, stop-loss, trailing-stop, and time-limit exits without editing configs or sending orders.
 - [x] Range-grid strategy scans range-bound symbols, estimates grid-cycle paper PnL after fees/slippage, and stays demo/live disabled.
+- [x] Smart DCA basket strategy scans major crypto symbols, estimates drawdown-tiered accumulation edge after fees/slippage, applies basket weight bands, and stays demo/live disabled.
 - [x] Hedged-maker/XEMM strategy plans passive maker quotes and taker hedge previews in paper mode without sending orders.
 - [x] Hedged-maker paper runtime persists open maker quote state, applies TTL cancel/refresh, and separates realized paper PnL from expected scan edge.
 - [x] Hedged-maker paper fill-quality model covers queue position, partial fill, stale quote cancellation, cancel latency, adverse selection, and expanded hedge slippage without orders.
@@ -192,6 +195,9 @@
 - [x] `crypto-assistant strategy position-report --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy range-grid --symbol BTC/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy range-grid --execution-mode paper --symbol BTC/USDT --json`
+- [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy smart-dca-basket --symbol SOL/USDT --exchange mock --json`
+- [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy smart-dca-basket --execution-mode paper --symbol SOL/USDT --json`
+- [x] `crypto-assistant arbitrage scan --type smart-dca-basket --symbol SOL/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy hedged-maker --symbol BTC/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy hedged-maker --execution-mode paper --symbol BTC/USDT --json`
 - [x] `crypto-assistant strategy run --config /private/tmp/coinbot-hedged-maker-lifecycle-smoke.yaml --strategy hedged-maker --max-cycles 2 --interval-seconds 0 --execution-mode paper --symbol BTC/USDT --json`
@@ -223,6 +229,7 @@
 - [x] Strategy revival windows are demo-only and local-first; they never target live trading and do nothing when there are no current revival candidates.
 - [x] Directional strategies are long-only spot, local/backtest/paper first, live-unsupported, and `orderbook-imbalance-scalp` is demo-disabled.
 - [x] Range-grid is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live grid orders.
+- [x] Smart DCA basket is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live DCA/rebalance orders.
 - [x] Hedged-maker is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live maker quotes.
 - [x] Hedged-maker lifecycle output reports `orders_sent=false` and `live_orders_sent=false`; paper quote state does not enable demo/live dispatch.
 - [x] Hedged-maker fill-quality output remains simulation-only and does not convert paper queue/fill assumptions into OKX Demo or live order permission.

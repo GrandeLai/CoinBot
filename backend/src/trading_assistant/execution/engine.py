@@ -56,6 +56,7 @@ class ExecutionEngine:
             "momentum-rotation",
             "orderbook-imbalance-scalp",
             "range-grid",
+            "smart-dca-basket",
             "hedged-maker",
         ):
             symbols = self.settings.directional.symbols if strategy_type in {"momentum-rotation"} else ["BTC/USDT", *self.settings.directional.symbols]
