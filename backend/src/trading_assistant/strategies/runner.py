@@ -353,7 +353,7 @@ class StrategyRunner:
                 opportunities = scanner.scan(definition.scanner_type, symbol=symbol, exchange="mock")
             elif definition.scanner_type in {"triangular", "triangular-multi-route", "funding-carry-hedged"}:
                 opportunities = scanner.scan(definition.scanner_type, exchange="mock")
-            elif definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid"}:
+            elif definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid", "hedged-maker"}:
                 opportunities = scanner.scan(definition.scanner_type, symbol=symbol, exchange="mock")
             else:
                 opportunities = scanner.scan(definition.scanner_type, symbol=symbol)
@@ -451,7 +451,7 @@ class StrategyRunner:
                 return self.scanner.scan(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange()), None
             if definition.scanner_type in {"triangular", "triangular-multi-route", "funding-carry-hedged"}:
                 return self.scanner.scan(definition.scanner_type, exchange=self._preferred_single_exchange()), None
-            if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid"}:
+            if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid", "hedged-maker"}:
                 return self.scanner.scan(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange()), None
             return self.scanner.scan(definition.scanner_type, symbol=symbol), None
         except ExchangeError as exc:

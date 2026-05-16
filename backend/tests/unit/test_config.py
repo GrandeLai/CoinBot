@@ -64,6 +64,10 @@ def test_loads_safe_example_config() -> None:
     assert settings.range_grid.enabled is True
     assert settings.range_grid.grid_levels == 6
     assert settings.range_grid.total_quote_usdt == Decimal("100")
+    assert settings.hedged_maker.enabled is True
+    assert settings.hedged_maker.maker_exchange == "mock"
+    assert settings.hedged_maker.hedge_exchange == "mock_alt"
+    assert settings.hedged_maker.min_edge_pct == Decimal("0.15")
 
 
 def test_strategy_runtime_autopilot_defaults_are_safe() -> None:
@@ -103,6 +107,8 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.exit_optimization.max_candidates == 5
     assert demo.range_grid.exchange == "okx"
     assert demo.range_grid.total_quote_usdt == Decimal("100")
+    assert demo.hedged_maker.maker_exchange == "mock"
+    assert demo.hedged_maker.hedge_exchange == "mock_alt"
 
     assert live.app.mode == "live"
     assert live.trading.live_trading is True

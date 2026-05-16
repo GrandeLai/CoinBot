@@ -446,6 +446,38 @@ class RangeGridConfig(BaseModel):
         return value
 
 
+class HedgedMakerConfig(BaseModel):
+    """Paper-only hedged maker / XEMM strategy controls."""
+
+    enabled: bool = True
+    maker_exchange: str = "mock"
+    hedge_exchange: str = "mock_alt"
+    symbols: list[str] = Field(default_factory=lambda: ["BTC/USDT", "ETH/USDT"])
+    quote_notional_usdt: Decimal = Decimal("100")
+    quote_spread_pct: Decimal = Decimal("0.20")
+    min_edge_pct: Decimal = Decimal("0.15")
+    maker_fee_pct: Decimal = Decimal("0.0008")
+    taker_fee_pct: Decimal = Decimal("0.001")
+    hedge_slippage_pct: Decimal = Decimal("0.0002")
+    min_hedge_depth_usdt: Decimal = Decimal("1000")
+
+    @field_validator("quote_notional_usdt", "min_hedge_depth_usdt")
+    @classmethod
+    def positive_hedged_maker_money(cls, value: Decimal) -> Decimal:
+        """Require positive hedged-maker capital/depth controls."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("quote_spread_pct", "min_edge_pct", "maker_fee_pct", "taker_fee_pct", "hedge_slippage_pct")
+    @classmethod
+    def non_negative_hedged_maker_thresholds(cls, value: Decimal) -> Decimal:
+        """Require non-negative hedged-maker thresholds."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+
 class ReportingConfig(BaseModel):
     """Report generation settings."""
 
@@ -485,6 +517,7 @@ class StrategyRuntimeConfig(BaseModel):
             "momentum-rotation",
             "orderbook-imbalance-scalp",
             "range-grid",
+            "hedged-maker",
         ]
     )
     portfolio_max_concurrent_strategies: int = 3
@@ -642,6 +675,7 @@ class Settings(BaseModel):
     universe: UniverseConfig = Field(default_factory=UniverseConfig)
     exit_optimization: ExitOptimizationConfig = Field(default_factory=ExitOptimizationConfig)
     range_grid: RangeGridConfig = Field(default_factory=RangeGridConfig)
+    hedged_maker: HedgedMakerConfig = Field(default_factory=HedgedMakerConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     strategy_runtime: StrategyRuntimeConfig = Field(default_factory=StrategyRuntimeConfig)
 

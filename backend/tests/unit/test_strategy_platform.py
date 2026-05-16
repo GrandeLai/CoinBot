@@ -30,7 +30,7 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
 
     names = {strategy["name"] for strategy in catalog["strategies"]}
 
-    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis", "range-grid"}
+    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis", "range-grid", "hedged-maker"}
     assert catalog["aliases"]["triangular"] == "triangular-multi-route"
     assert catalog["aliases"]["funding-rate"] == "funding-carry-hedged"
     assert catalog["aliases"]["spot-perp"] == "spot-perp-carry"
@@ -45,6 +45,7 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
     assert "trend-breakout" in registry.demo_validation_names()
     assert "orderbook-imbalance-scalp" not in registry.demo_validation_names()
     assert "range-grid" not in registry.demo_validation_names()
+    assert "hedged-maker" not in registry.demo_validation_names()
 
 
 def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> None:
@@ -66,6 +67,7 @@ def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> Non
         "momentum-rotation",
         "orderbook-imbalance-scalp",
         "range-grid",
+        "hedged-maker",
     }
     assert all(report.status == "active" for report in reports)
     assert sum(len(report.opportunities) for report in reports) >= 5

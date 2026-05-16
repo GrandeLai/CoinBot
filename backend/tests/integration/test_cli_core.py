@@ -678,6 +678,58 @@ strategy_runtime:
     assert result["execution"]["dry_run"] is True
 
 
+def test_cli_strategy_hedged_maker_scans_and_runs_in_paper(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "hedged-maker.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        ["strategy", "scan", "--config", str(config_path), "--strategy", "hedged-maker", "--symbol", "BTC/USDT", "--exchange", "mock"],
+        capsys,
+    )
+    assert code == 0
+    report = payload["strategy_scan"][0]
+    assert report["strategy_name"] == "hedged-maker"
+    assert report["opportunities"]
+    assert report["opportunities"][0]["metadata"]["paper_only"] is True
+    assert report["opportunities"][0]["metadata"]["maker_order_type"] == "limit_post_only"
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "run",
+            "--config",
+            str(config_path),
+            "--strategy",
+            "hedged-maker",
+            "--symbol",
+            "BTC/USDT",
+            "--max-cycles",
+            "1",
+            "--interval-seconds",
+            "0",
+            "--execution-mode",
+            "paper",
+        ],
+        capsys,
+    )
+    assert code == 0
+    result = payload["strategy_run"]["results"][0]
+    assert result["strategy_name"] == "hedged-maker"
+    assert result["decision"] == "executed"
+    assert result["execution"]["dry_run"] is True
+
+
 def test_cli_strategy_retrospective_empty_history(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "strategy.yaml"
     config_path.write_text(

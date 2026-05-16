@@ -246,6 +246,7 @@ uv run crypto-assistant strategy pnl-attribution \
 | Triangular arbitrage | `triangular-multi-route` plus aliases `triangular` | Read-only discovery, paper, then OKX demo sampling when gates pass. |
 | Carry and basis | `funding-carry-hedged`, `spot-perp-carry`, `futures-perp-basis` | Offline diagnostics and paper until economics beat fees, slippage, holding cost, and basis hedge cost. |
 | Range grid | `range-grid` | Paper-only range-bound grid opportunity estimates; OKX Demo and live orders are not supported. |
+| Hedged maker / XEMM | `hedged-maker` | Paper-only passive quote planner with taker hedge preview; real maker orders are not supported. |
 | Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
 
 Carry/basis tuning is read-only:
@@ -280,6 +281,28 @@ uv run crypto-assistant strategy run \
 ```
 
 `range-grid` builds a bounded ladder from completed candles, estimates completed grid cycles after fee and slippage costs, and emits simulated buy/sell legs for the existing risk, budget, paper execution, journal, and scoring paths. It reports `paper_only=true`; it is deliberately excluded from OKX Demo and live execution until a separate stateful order manager is implemented and sandbox-tested.
+
+Hedged-maker/XEMM validation plans a passive maker quote and an immediate hedge preview:
+
+```bash
+uv run crypto-assistant strategy scan \
+  --config ../configs/config.example.yaml \
+  --strategy hedged-maker \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+
+uv run crypto-assistant strategy run \
+  --config ../configs/config.example.yaml \
+  --strategy hedged-maker \
+  --symbol BTC/USDT \
+  --max-cycles 1 \
+  --interval-seconds 0 \
+  --execution-mode paper \
+  --json
+```
+
+`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and emits simulated legs for paper execution only. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
 
 Directional exit tuning is also read-only:
 

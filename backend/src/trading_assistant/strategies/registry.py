@@ -137,6 +137,17 @@ class StrategyRegistry:
                 live_supported=False,
                 notes="Paper-only first release; OKX demo grid orders require a separate stateful order manager and are intentionally disabled.",
             ),
+            "hedged-maker": StrategyDefinition(
+                name="hedged-maker",
+                scanner_type="hedged-maker",
+                description="Paper-only hedged maker/XEMM planner that quotes passively and previews an immediate taker hedge.",
+                category="market-making",
+                required_markets=["spot", "orderbook", "balance"],
+                risk_level="medium",
+                demo_supported=False,
+                live_supported=False,
+                notes="Paper-only first release; real maker quotes require stateful own-order tracking, cancel/refresh, and sandbox parity tests.",
+            ),
         }
         self._aliases = {
             alias: name

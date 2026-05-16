@@ -156,6 +156,21 @@ range_grid:
   fee_pct: "0.001"
   slippage_pct: "0.0002"
 
+hedged_maker:
+  enabled: true
+  maker_exchange: mock
+  hedge_exchange: mock_alt
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+  quote_notional_usdt: "100"
+  quote_spread_pct: "0.20"
+  min_edge_pct: "0.15"
+  maker_fee_pct: "0.0008"
+  taker_fee_pct: "0.001"
+  hedge_slippage_pct: "0.0002"
+  min_hedge_depth_usdt: "1000"
+
 strategy_runtime:
   default_execution_mode: paper
   enabled_strategies:
@@ -170,6 +185,7 @@ strategy_runtime:
     - momentum-rotation
     - orderbook-imbalance-scalp
     - range-grid
+    - hedged-maker
   portfolio_max_concurrent_strategies: 3
   portfolio_min_score: "50"
   max_position_value_usdt: "100"
