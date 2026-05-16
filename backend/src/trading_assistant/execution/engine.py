@@ -55,6 +55,7 @@ class ExecutionEngine:
             "volatility-squeeze-breakout",
             "momentum-rotation",
             "orderbook-imbalance-scalp",
+            "range-grid",
         ):
             symbols = self.settings.directional.symbols if strategy_type in {"momentum-rotation"} else ["BTC/USDT", *self.settings.directional.symbols]
             for symbol in dict.fromkeys(symbols):

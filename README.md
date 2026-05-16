@@ -245,6 +245,7 @@ uv run crypto-assistant strategy pnl-attribution \
 | Cross-exchange arbitrage | `cross-exchange` | Mock/paper first; live adapter coverage is limited. |
 | Triangular arbitrage | `triangular-multi-route` plus aliases `triangular` | Read-only discovery, paper, then OKX demo sampling when gates pass. |
 | Carry and basis | `funding-carry-hedged`, `spot-perp-carry`, `futures-perp-basis` | Offline diagnostics and paper until economics beat fees, slippage, holding cost, and basis hedge cost. |
+| Range grid | `range-grid` | Paper-only range-bound grid opportunity estimates; OKX Demo and live orders are not supported. |
 | Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
 
 Carry/basis tuning is read-only:
@@ -257,6 +258,28 @@ uv run crypto-assistant strategy carry-basis-optimize \
 ```
 
 Dynamic universe and regime routing are read-only foundations for the next profit-expansion layer. `strategy universe` filters configured symbols by spread, 24h quote volume, depth, and completed-candle behavior; `strategy regime-report` classifies a symbol as `trend`, `range`, `carry`, `illiquid`, or `avoid` so future strategy selection can route range markets to grid/mean-reversion, trends to breakout/momentum, and carry regimes to basis/funding scans.
+
+Range-grid validation uses the regime router and remains paper-only:
+
+```bash
+uv run crypto-assistant strategy scan \
+  --config ../configs/config.example.yaml \
+  --strategy range-grid \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+
+uv run crypto-assistant strategy run \
+  --config ../configs/config.example.yaml \
+  --strategy range-grid \
+  --symbol BTC/USDT \
+  --max-cycles 1 \
+  --interval-seconds 0 \
+  --execution-mode paper \
+  --json
+```
+
+`range-grid` builds a bounded ladder from completed candles, estimates completed grid cycles after fee and slippage costs, and emits simulated buy/sell legs for the existing risk, budget, paper execution, journal, and scoring paths. It reports `paper_only=true`; it is deliberately excluded from OKX Demo and live execution until a separate stateful order manager is implemented and sandbox-tested.
 
 Directional exit tuning is also read-only:
 

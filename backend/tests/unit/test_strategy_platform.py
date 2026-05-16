@@ -30,7 +30,7 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
 
     names = {strategy["name"] for strategy in catalog["strategies"]}
 
-    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis"}
+    assert names >= {"triangular-multi-route", "funding-carry-hedged", "spot-perp-carry", "futures-perp-basis", "range-grid"}
     assert catalog["aliases"]["triangular"] == "triangular-multi-route"
     assert catalog["aliases"]["funding-rate"] == "funding-carry-hedged"
     assert catalog["aliases"]["spot-perp"] == "spot-perp-carry"
@@ -44,6 +44,7 @@ def test_strategy_catalog_registers_new_strategies_and_compatibility_aliases() -
     ]
     assert "trend-breakout" in registry.demo_validation_names()
     assert "orderbook-imbalance-scalp" not in registry.demo_validation_names()
+    assert "range-grid" not in registry.demo_validation_names()
 
 
 def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> None:
@@ -64,9 +65,28 @@ def test_strategy_controller_scans_all_enabled_strategies(tmp_path: Path) -> Non
         "volatility-squeeze-breakout",
         "momentum-rotation",
         "orderbook-imbalance-scalp",
+        "range-grid",
     }
     assert all(report.status == "active" for report in reports)
     assert sum(len(report.opportunities) for report in reports) >= 5
+
+
+def test_strategy_controller_scans_range_grid_when_regime_is_range(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    _force_mock_btc_range(settings)
+
+    report = StrategyController(settings, ExchangeFactory(settings)).scan(
+        strategy_name="range-grid",
+        symbol="BTC/USDT",
+        exchange="mock",
+    )[0]
+
+    assert report.strategy_name == "range-grid"
+    assert report.opportunities
+    assert report.opportunities[0].metadata["paper_only"] is True
+    assert report.diagnostics["approved"] is True
+    assert report.diagnostics["regime"] == "range"
 
 
 def test_triangular_route_discovery_expands_and_explains_mock_routes(tmp_path: Path) -> None:
@@ -353,6 +373,13 @@ def _use_temp_runtime_paths(settings: Settings, tmp_path: Path) -> None:
     strategy_runtime.retrospective_state_path = str(tmp_path / "retrospective.state.json")
     strategy_runtime.evolution_state_path = str(tmp_path / "evolution.state.json")
     strategy_runtime.evolution_report_path = str(tmp_path / "evolution.md")
+
+
+def _force_mock_btc_range(settings: Settings) -> None:
+    settings.universe.trend_return_threshold_pct = Decimal("100")
+    settings.universe.range_volatility_max_pct = Decimal("10")
+    settings.range_grid.max_range_width_pct = Decimal("20")
+    settings.range_grid.min_grid_spacing_pct = Decimal("0.50")
 
 
 class LockedSellBalanceFactory(ExchangeFactory):

@@ -17,6 +17,7 @@ from trading_assistant.config.schema import Settings
 from trading_assistant.directional.scanner import DIRECTIONAL_STRATEGY_TYPES, DirectionalOpportunityScanner
 from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.exceptions import ConfigError
+from trading_assistant.strategies.range_grid import RangeGridStrategyService
 
 
 class ArbitrageScanner:
@@ -58,6 +59,8 @@ class ArbitrageScanner:
                 return SpotPerpCarryScanner(self.settings, self.exchanges).scan(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
             case "futures-perp-basis":
                 return FuturesPerpBasisScanner(self.settings, self.exchanges).scan(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
+            case "range-grid":
+                return RangeGridStrategyService(self.settings, self.exchanges).scan(symbol or self.settings.range_grid.symbols[0], exchange=exchange)
             case _:
                 raise ConfigError(f"Unsupported arbitrage type: {strategy_type}")
 
@@ -77,5 +80,7 @@ class ArbitrageScanner:
                 return SpotPerpCarryScanner(self.settings, self.exchanges).diagnose(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
             case "futures-perp-basis":
                 return FuturesPerpBasisScanner(self.settings, self.exchanges).diagnose(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
+            case "range-grid":
+                return RangeGridStrategyService(self.settings, self.exchanges).diagnose(symbol or self.settings.range_grid.symbols[0], exchange=exchange)
             case _:
                 return {}

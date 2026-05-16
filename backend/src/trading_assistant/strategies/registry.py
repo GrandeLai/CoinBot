@@ -126,6 +126,17 @@ class StrategyRegistry:
                 live_supported=False,
                 notes="Demo disabled until the other directional strategies accumulate stable validation evidence.",
             ),
+            "range-grid": StrategyDefinition(
+                name="range-grid",
+                scanner_type="range-grid",
+                description="Paper-only range-bound grid strategy using regime filters, bounded levels, and fee/slippage-adjusted simulated cycles.",
+                category="grid",
+                required_markets=["spot", "candles", "orderbook"],
+                risk_level="medium",
+                demo_supported=False,
+                live_supported=False,
+                notes="Paper-only first release; OKX demo grid orders require a separate stateful order manager and are intentionally disabled.",
+            ),
         }
         self._aliases = {
             alias: name

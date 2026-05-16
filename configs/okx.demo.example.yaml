@@ -142,6 +142,20 @@ exit_optimization:
     - 32
   max_candidates: 5
 
+range_grid:
+  enabled: true
+  exchange: okx
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+  grid_levels: 6
+  lookback_candles: 48
+  total_quote_usdt: "100"
+  min_grid_spacing_pct: "0.80"
+  max_range_width_pct: "12"
+  fee_pct: "0.001"
+  slippage_pct: "0.0002"
+
 strategy_runtime:
   default_execution_mode: paper
   enabled_strategies:
@@ -155,6 +169,7 @@ strategy_runtime:
     - volatility-squeeze-breakout
     - momentum-rotation
     - orderbook-imbalance-scalp
+    - range-grid
   portfolio_max_concurrent_strategies: 3
   portfolio_min_score: "50"
   max_position_value_usdt: "100"

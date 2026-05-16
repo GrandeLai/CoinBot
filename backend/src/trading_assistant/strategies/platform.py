@@ -156,7 +156,7 @@ class StrategyController:
                     exchange=exchange or self._preferred_single_exchange(),
                     route_mode=route_mode,
                 )
-            if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis"}:
+            if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid"}:
                 return self.scanner.scan(definition.scanner_type, symbol=symbol, exchange=exchange or self._preferred_single_exchange())
             return self.scanner.scan(definition.scanner_type, symbol=symbol)
         except ExchangeError:
@@ -169,6 +169,8 @@ class StrategyController:
             if definition.scanner_type in {"funding-carry-hedged"}:
                 return self.scanner.diagnose(definition.scanner_type, exchange=self._preferred_single_exchange())
             if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis"}:
+                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange())
+            if definition.scanner_type in {"range-grid"}:
                 return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange())
         except ExchangeError as exc:
             return {"approved": False, "reasons": [f"diagnostic_error:{exc}"]}

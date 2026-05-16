@@ -51,8 +51,12 @@ def test_loads_safe_example_config() -> None:
     assert settings.universe.enabled is True
     assert settings.universe.min_24h_volume_usdt == Decimal("100000")
     assert settings.universe.max_spread_pct == Decimal("0.10")
+    assert settings.universe.trend_return_threshold_pct == Decimal("100")
     assert settings.exit_optimization.take_profit_candidates_pct == [Decimal("1.00"), Decimal("2.00"), Decimal("3.00")]
     assert settings.exit_optimization.time_limit_candidates_bars == [8, 16, 32]
+    assert settings.range_grid.enabled is True
+    assert settings.range_grid.grid_levels == 6
+    assert settings.range_grid.total_quote_usdt == Decimal("100")
 
 
 def test_strategy_runtime_autopilot_defaults_are_safe() -> None:
@@ -90,6 +94,8 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.arbitrage.funding_max_basis_hedge_cost_pct == Decimal("0.30")
     assert demo.universe.candles_limit == 120
     assert demo.exit_optimization.max_candidates == 5
+    assert demo.range_grid.exchange == "okx"
+    assert demo.range_grid.total_quote_usdt == Decimal("100")
 
     assert live.app.mode == "live"
     assert live.trading.live_trading is True

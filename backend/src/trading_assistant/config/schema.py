@@ -359,6 +359,53 @@ class ExitOptimizationConfig(BaseModel):
         return value
 
 
+class RangeGridConfig(BaseModel):
+    """Paper-only range-grid strategy controls."""
+
+    enabled: bool = True
+    exchange: str = "mock"
+    symbols: list[str] = Field(default_factory=lambda: ["BTC/USDT", "ETH/USDT"])
+    grid_levels: int = 6
+    lookback_candles: int = 48
+    total_quote_usdt: Decimal = Decimal("100")
+    min_grid_spacing_pct: Decimal = Decimal("0.80")
+    max_range_width_pct: Decimal = Decimal("12")
+    fee_pct: Decimal = Decimal("0.001")
+    slippage_pct: Decimal = Decimal("0.0002")
+
+    @field_validator("grid_levels")
+    @classmethod
+    def minimum_grid_levels(cls, value: int) -> int:
+        """Require at least three grid levels."""
+        if value < 3:
+            raise ValueError("must be at least 3")
+        return value
+
+    @field_validator("lookback_candles")
+    @classmethod
+    def positive_grid_lookback(cls, value: int) -> int:
+        """Require a positive grid lookback."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("total_quote_usdt")
+    @classmethod
+    def positive_grid_capital(cls, value: Decimal) -> Decimal:
+        """Require positive grid capital."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("min_grid_spacing_pct", "max_range_width_pct", "fee_pct", "slippage_pct")
+    @classmethod
+    def non_negative_grid_thresholds(cls, value: Decimal) -> Decimal:
+        """Require non-negative grid thresholds."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+
 class ReportingConfig(BaseModel):
     """Report generation settings."""
 
@@ -397,6 +444,7 @@ class StrategyRuntimeConfig(BaseModel):
             "volatility-squeeze-breakout",
             "momentum-rotation",
             "orderbook-imbalance-scalp",
+            "range-grid",
         ]
     )
     portfolio_max_concurrent_strategies: int = 3
@@ -553,6 +601,7 @@ class Settings(BaseModel):
     directional: DirectionalConfig = Field(default_factory=DirectionalConfig)
     universe: UniverseConfig = Field(default_factory=UniverseConfig)
     exit_optimization: ExitOptimizationConfig = Field(default_factory=ExitOptimizationConfig)
+    range_grid: RangeGridConfig = Field(default_factory=RangeGridConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     strategy_runtime: StrategyRuntimeConfig = Field(default_factory=StrategyRuntimeConfig)
 

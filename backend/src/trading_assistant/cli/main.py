@@ -96,6 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
             "spot-perp",
             "spot-perp-carry",
             "futures-perp-basis",
+            "range-grid",
         ],
         help="Arbitrage type",
     )

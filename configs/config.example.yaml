@@ -153,7 +153,7 @@ universe:
   min_24h_volume_usdt: "100000"
   min_depth_usdt: "1000"
   max_spread_pct: "0.10"
-  trend_return_threshold_pct: "1.00"
+  trend_return_threshold_pct: "100"
   range_volatility_max_pct: "1.25"
 
 exit_optimization:
@@ -176,6 +176,20 @@ exit_optimization:
     - 32
   max_candidates: 5
 
+range_grid:
+  enabled: true
+  exchange: mock
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+  grid_levels: 6
+  lookback_candles: 48
+  total_quote_usdt: "100"
+  min_grid_spacing_pct: "0.80"
+  max_range_width_pct: "12"
+  fee_pct: "0.001"
+  slippage_pct: "0.0002"
+
 reporting:
   output_dir: reports
 
@@ -193,6 +207,7 @@ strategy_runtime:
     - volatility-squeeze-breakout
     - momentum-rotation
     - orderbook-imbalance-scalp
+    - range-grid
   portfolio_max_concurrent_strategies: 3
   portfolio_min_score: "50"
   max_position_value_usdt: "100"

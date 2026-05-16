@@ -104,6 +104,7 @@
 - [x] Strategy opportunity report provides read-only opportunity-density metrics from the journal, including scan count, candidate count, skip reasons, expected-vs-actual gap, account-equity delta, route/symbol distribution, observation-pool gaps, and demo size-stage readiness.
 - [x] Dynamic universe and regime reports filter configured symbols by spread, volume, depth, and completed-candle behavior without sending orders.
 - [x] Triple-barrier exit optimization simulates take-profit, stop-loss, trailing-stop, and time-limit exits without editing configs or sending orders.
+- [x] Range-grid strategy scans range-bound symbols, estimates grid-cycle paper PnL after fees/slippage, and stays demo/live disabled.
 - [x] Triangular route discovery reads spot instruments, keeps configured routes as priority routes, expands to accepted instrument-driven routes, and reports filtered routes with reasons without sending orders.
 - [x] Triangular multi-route scanning can use `--route-mode discovered` and records multi-level orderbook expected fill prices, submitted limit prices, fee/slippage estimates, depth consumed, and min-size adjustments.
 - [x] Latest OKX read-only comparison found no current demo-preflight candidates across the five configured strategies; non-triangular strategies were blocked by funding/basis/net-profit diagnostics rather than by forced demo orders.
@@ -176,6 +177,8 @@
 - [x] `crypto-assistant strategy validation-report --config configs/config.example.yaml --execution-mode paper --strategy directional-all --limit 50 --json`
 - [x] `crypto-assistant strategy exit-optimize --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy position-report --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
+- [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy range-grid --symbol BTC/USDT --exchange mock --json`
+- [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy range-grid --execution-mode paper --symbol BTC/USDT --json`
 - [x] `crypto-assistant strategy validate-demo --config configs/okx.demo.example.yaml --strategy all --symbol BTC/USDT --allow-account-mode-switch --json` exists, supports `--help`, requires local validation first, and validates all demo-supported allowlisted paths including `funding-carry-hedged`, `spot-perp-carry`, and `futures-perp-basis`.
 - [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --json`
 - [x] `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy all --cycles 10 --json`
@@ -199,6 +202,7 @@
 - [x] Strategy evolution is simulation-only: it sends no orders, enables no live trading, stores only soft archive state, and requires fresh simulated evidence before a strategy can return from archive.
 - [x] Strategy revival windows are demo-only and local-first; they never target live trading and do nothing when there are no current revival candidates.
 - [x] Directional strategies are long-only spot, local/backtest/paper first, live-unsupported, and `orderbook-imbalance-scalp` is demo-disabled.
+- [x] Range-grid is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live grid orders.
 - [x] No hardcoded API keys, secrets, passphrases, or tokens.
 - [x] `.env` is ignored and not required for tests.
 - [x] CLI/log/report output redacts credentials.

@@ -37,13 +37,13 @@
 
 ## Task 1: Range Grid Unit Tests
 
-- [ ] Write failing tests for a range regime producing one `range-grid` opportunity with:
+- [x] Write failing tests for a range regime producing one `range-grid` opportunity with:
   - `strategy_type == "range-grid"`
   - metadata `read_only=true`, `paper_only=true`, `grid_levels`
   - positive `net_profit`
   - buy/sell simulated legs
-- [ ] Write failing diagnostic test for non-range regimes returning no opportunity and reason `regime_not_range`.
-- [ ] Verify RED with:
+- [x] Write failing diagnostic test for non-range regimes returning no opportunity and reason `regime_not_range`.
+- [x] Verify RED with:
 
 ```bash
 cd backend
@@ -52,39 +52,39 @@ UV_CACHE_DIR=.uv-cache uv run pytest tests/unit/test_range_grid_strategy.py -v
 
 ## Task 2: Implement Range Grid Service
 
-- [ ] Add `RangeGridConfig` to `config/schema.py`:
+- [x] Add `RangeGridConfig` to `config/schema.py`:
   - enabled, exchange, symbols, grid_levels, lookback_candles, total_quote_usdt, min_grid_spacing_pct, max_range_width_pct, fee_pct, slippage_pct.
-- [ ] Implement `RangeGridStrategyService.scan(symbol, exchange)` and `diagnose(symbol, exchange)`.
-- [ ] Use `StrategyUniverseService.symbol_report` as a gate; only emit opportunities for `regime=range`.
-- [ ] Build grid bounds from completed candle high/low over lookback.
-- [ ] Estimate net PnL as completed-grid cycles times level notional times spacing minus round-trip fees/slippage.
-- [ ] Return a normal `ArbitrageOpportunity` with two simulated legs and no-order metadata.
-- [ ] Verify GREEN with the unit tests.
+- [x] Implement `RangeGridStrategyService.scan(symbol, exchange)` and `diagnose(symbol, exchange)`.
+- [x] Use `StrategyUniverseService.symbol_report` as a gate; only emit opportunities for `regime=range`.
+- [x] Build grid bounds from completed candle high/low over lookback.
+- [x] Estimate net PnL as completed-grid cycles times level notional times spacing minus round-trip fees/slippage.
+- [x] Return a normal `ArbitrageOpportunity` with two simulated legs and no-order metadata.
+- [x] Verify GREEN with the unit tests.
 
 ## Task 3: Platform And Runtime Integration
 
-- [ ] Register `range-grid` in `StrategyRegistry` with `category="grid"`, `demo_supported=False`, `live_supported=False`.
-- [ ] Add scanner dispatch and diagnostics.
-- [ ] Add `range-grid` to `ExecutionEngine.find_opportunity`.
-- [ ] Route `range-grid` through `_preferred_single_exchange` in `StrategyRunner` and `StrategyController`.
-- [ ] Add tests that strategy catalog includes `range-grid`, demo validation names exclude it, `strategy scan --strategy range-grid` returns an opportunity under range config, and `strategy run --strategy range-grid --execution-mode paper` journals an execution.
+- [x] Register `range-grid` in `StrategyRegistry` with `category="grid"`, `demo_supported=False`, `live_supported=False`.
+- [x] Add scanner dispatch and diagnostics.
+- [x] Add `range-grid` to `ExecutionEngine.find_opportunity`.
+- [x] Route `range-grid` through `_preferred_single_exchange` in `StrategyRunner` and `StrategyController`.
+- [x] Add tests that strategy catalog includes `range-grid`, demo validation names exclude it, `strategy scan --strategy range-grid` returns an opportunity under range config, and `strategy run --strategy range-grid --execution-mode paper` journals an execution.
 
 ## Task 4: Docs And Traceability
 
-- [ ] Document commands and paper-only caveat in README and DESIGN.
-- [ ] Add acceptance checklist command:
+- [x] Document commands and paper-only caveat in README and DESIGN.
+- [x] Add acceptance checklist command:
 
 ```bash
 crypto-assistant strategy scan --config configs/config.example.yaml --strategy range-grid --symbol BTC/USDT --json
 crypto-assistant strategy run --config configs/config.example.yaml --strategy range-grid --execution-mode paper --json
 ```
 
-- [ ] Add traceability row `R076 Range Grid Paper Strategy`.
-- [ ] Add phase report with verification results.
+- [x] Add traceability row `R076 Range Grid Paper Strategy`.
+- [x] Add phase report with verification results.
 
 ## Task 5: Verification And Commit
 
-- [ ] Run:
+- [x] Run:
 
 ```bash
 cd backend
@@ -95,7 +95,7 @@ UV_CACHE_DIR=.uv-cache uv run ruff check src/ tests/
 UV_CACHE_DIR=.uv-cache uv run mypy src/
 ```
 
-- [ ] Run CLI smoke:
+- [x] Run CLI smoke:
 
 ```bash
 cd backend
@@ -103,7 +103,7 @@ UV_CACHE_DIR=.uv-cache uv run crypto-assistant strategy scan --config ../configs
 UV_CACHE_DIR=.uv-cache uv run crypto-assistant strategy run --config ../configs/config.example.yaml --strategy range-grid --max-cycles 1 --interval-seconds 0 --execution-mode paper --symbol BTC/USDT --json
 ```
 
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add README.md docs/DESIGN.md docs/plan/2026-05-09-refactor/02-acceptance-checklist.md docs/plan/2026-05-09-refactor/03-traceability-matrix.md docs/plan/2026-05-09-refactor/65-range-grid-paper-strategy-plan.md docs/plan/2026-05-09-refactor/66-range-grid-paper-strategy-report.md backend/src/trading_assistant/config/schema.py backend/src/trading_assistant/arbitrage/scanner.py backend/src/trading_assistant/strategies/range_grid.py backend/src/trading_assistant/strategies/registry.py backend/src/trading_assistant/strategies/runner.py backend/src/trading_assistant/strategies/platform.py backend/src/trading_assistant/execution/engine.py backend/tests/unit/test_range_grid_strategy.py backend/tests/unit/test_strategy_platform.py backend/tests/integration/test_cli_core.py configs/config.example.yaml configs/okx.demo.example.yaml
