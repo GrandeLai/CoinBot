@@ -107,6 +107,7 @@
 - [x] Range-grid strategy scans range-bound symbols, estimates grid-cycle paper PnL after fees/slippage, and stays demo/live disabled.
 - [x] Hedged-maker/XEMM strategy plans passive maker quotes and taker hedge previews in paper mode without sending orders.
 - [x] Hedged-maker paper runtime persists open maker quote state, applies TTL cancel/refresh, and separates realized paper PnL from expected scan edge.
+- [x] Hedged-maker paper fill-quality model covers queue position, partial fill, stale quote cancellation, cancel latency, adverse selection, and expanded hedge slippage without orders.
 - [x] Backtest validation uses completed candles, fee/slippage assumptions, walk-forward windows, and bias diagnostics without sending orders.
 - [x] Triangular route discovery reads spot instruments, keeps configured routes as priority routes, expands to accepted instrument-driven routes, and reports filtered routes with reasons without sending orders.
 - [x] Triangular multi-route scanning can use `--route-mode discovered` and records multi-level orderbook expected fill prices, submitted limit prices, fee/slippage estimates, depth consumed, and min-size adjustments.
@@ -214,6 +215,7 @@
 - [x] Range-grid is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live grid orders.
 - [x] Hedged-maker is paper-only, reports `paper_only=true`, is registered with `demo_supported=false` and `live_supported=false`, and cannot dispatch OKX Demo or live maker quotes.
 - [x] Hedged-maker lifecycle output reports `orders_sent=false` and `live_orders_sent=false`; paper quote state does not enable demo/live dispatch.
+- [x] Hedged-maker fill-quality output remains simulation-only and does not convert paper queue/fill assumptions into OKX Demo or live order permission.
 - [x] Backtest run, walk-forward, and bias-check are read-only and report `orders_sent=false` plus `live_orders_sent=false`.
 - [x] No hardcoded API keys, secrets, passphrases, or tokens.
 - [x] `.env` is ignored and not required for tests.

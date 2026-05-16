@@ -302,7 +302,7 @@ uv run crypto-assistant strategy run \
   --json
 ```
 
-`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
+`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
 
 Directional exit tuning is also read-only:
 

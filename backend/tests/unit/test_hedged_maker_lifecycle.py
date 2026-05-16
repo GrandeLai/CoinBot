@@ -72,6 +72,7 @@ def test_hedged_maker_lifecycle_replaces_expired_quote(tmp_path: Path) -> None:
 
 def test_hedged_maker_lifecycle_fills_existing_crossed_quote_and_records_hedge(tmp_path: Path) -> None:
     settings = _settings(tmp_path)
+    settings.hedged_maker.paper_queue_ahead_pct = Decimal("0")
     opportunity = _opportunity(settings)
     state_path = Path(settings.hedged_maker.paper_state_path)
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -121,6 +122,98 @@ def test_hedged_maker_lifecycle_fills_existing_crossed_quote_and_records_hedge(t
     assert filled_orders[0]["realized_net_profit_usdt"] == str(result.realized_net_profit_usdt)
 
 
+def test_hedged_maker_lifecycle_partially_fills_after_queue_position(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.hedged_maker.paper_queue_ahead_pct = Decimal("75")
+    settings.hedged_maker.paper_min_fill_pct = Decimal("25")
+    opportunity = _opportunity(settings)
+    _write_seed_order(settings, opportunity, price="60000", quantity="0.002")
+    service = HedgedMakerPaperLifecycleService(settings, ExchangeFactory(settings))
+
+    result = service.apply(
+        opportunity,
+        StrategyPolicy(settings.strategy_runtime).lifecycle_plan(),
+        now=NOW + timedelta(seconds=1),
+    )
+
+    assert result.status == "partially_filled_and_hedged"
+    assert result.hedge_order is not None
+    assert Decimal(str(result.hedge_order["quantity"])) == Decimal("0.0005")
+    assert result.paper_order["status"] == "partial_open"
+    assert Decimal(str(result.paper_order["filled_quantity"])) == Decimal("0.0005")
+    assert Decimal(str(result.paper_order["remaining_quantity"])) == Decimal("0.0015")
+    state = service.read_state()
+    assert len([order for order in state["orders"] if order["status"] == "partial_open"]) == 1
+
+
+def test_hedged_maker_lifecycle_requotes_stale_quote_without_counting_as_fill(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.hedged_maker.paper_stale_quote_seconds = 1
+    opportunity = _opportunity(settings)
+    _write_seed_order(settings, opportunity, price="49900", quantity="0.002")
+    service = HedgedMakerPaperLifecycleService(settings, ExchangeFactory(settings))
+
+    result = service.apply(
+        opportunity,
+        StrategyPolicy(settings.strategy_runtime).lifecycle_plan(),
+        now=NOW + timedelta(seconds=2),
+    )
+
+    assert result.status == "stale_requoted"
+    assert result.canceled_order_ids == ["seed-buy"]
+    assert result.realized_net_profit_usdt == Decimal("0")
+    state = service.read_state()
+    assert len([order for order in state["orders"] if order["status"] == "canceled"]) == 1
+    assert len([order for order in state["orders"] if order["status"] == "open"]) == 1
+
+
+def test_hedged_maker_lifecycle_cancel_latency_leaves_cancel_pending_before_requote(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.hedged_maker.paper_stale_quote_seconds = 1
+    settings.hedged_maker.paper_cancel_latency_seconds = 5
+    opportunity = _opportunity(settings)
+    _write_seed_order(settings, opportunity, price="49900", quantity="0.002")
+    service = HedgedMakerPaperLifecycleService(settings, ExchangeFactory(settings))
+    lifecycle = StrategyPolicy(settings.strategy_runtime).lifecycle_plan()
+
+    pending = service.apply(opportunity, lifecycle, now=NOW + timedelta(seconds=2))
+    still_pending = service.apply(opportunity, lifecycle, now=NOW + timedelta(seconds=4))
+    replaced = service.apply(opportunity, lifecycle, now=NOW + timedelta(seconds=8))
+
+    assert pending.status == "cancel_pending"
+    assert pending.paper_order["status"] == "cancel_pending"
+    assert pending.paper_order["cancel_effective_at"] == (NOW + timedelta(seconds=7)).isoformat()
+    assert still_pending.status == "cancel_pending"
+    assert still_pending.paper_order["cancel_effective_at"] == (NOW + timedelta(seconds=7)).isoformat()
+    assert replaced.status == "stale_requoted"
+    assert replaced.canceled_order_ids == ["seed-buy"]
+    state = service.read_state()
+    assert len([order for order in state["orders"] if order["status"] == "canceled"]) == 1
+    assert len([order for order in state["orders"] if order["status"] == "open"]) == 1
+
+
+def test_hedged_maker_lifecycle_marks_adverse_selection_and_expands_hedge_slippage(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    settings.hedged_maker.paper_queue_ahead_pct = Decimal("0")
+    settings.hedged_maker.paper_adverse_selection_buffer_pct = Decimal("0.05")
+    settings.hedged_maker.paper_adverse_hedge_slippage_multiplier = Decimal("3")
+    opportunity = _opportunity(settings)
+    _write_seed_order(settings, opportunity, price="60000", quantity="0.002")
+    service = HedgedMakerPaperLifecycleService(settings, ExchangeFactory(settings))
+
+    result = service.apply(
+        opportunity,
+        StrategyPolicy(settings.strategy_runtime).lifecycle_plan(),
+        now=NOW + timedelta(seconds=1),
+    )
+
+    assert result.status == "filled_and_hedged"
+    assert result.hedge_order is not None
+    assert result.hedge_order["adverse_selection"] is True
+    assert result.hedge_order["hedge_slippage_multiplier"] == "3"
+    assert result.hedge_order["effective_hedge_slippage_pct"] == str(settings.hedged_maker.hedge_slippage_pct * Decimal("3"))
+
+
 def _settings(tmp_path: Path):
     settings = load_settings(EXAMPLE_CONFIG)
     settings.hedged_maker.paper_state_path = str(tmp_path / "hedged-maker-paper-state.json")
@@ -135,3 +228,35 @@ def _opportunity(settings):
         maker_exchange="mock",
         hedge_exchange="mock_alt",
     )[0]
+
+
+def _write_seed_order(settings, opportunity, *, price: str, quantity: str) -> None:
+    state_path = Path(settings.hedged_maker.paper_state_path)
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "orders": [
+                    {
+                        "order_id": "seed-buy",
+                        "opportunity_id": opportunity.opportunity_id,
+                        "symbol": opportunity.symbol,
+                        "maker_exchange": "mock",
+                        "hedge_exchange": "mock_alt",
+                        "maker_side": "buy",
+                        "hedge_side": "sell",
+                        "maker_order_type": "limit_post_only",
+                        "hedge_order_type": "taker_market_preview",
+                        "price": price,
+                        "quantity": quantity,
+                        "expected_net_profit_usdt": "0.55",
+                        "status": "open",
+                        "created_at": NOW.isoformat(),
+                        "updated_at": NOW.isoformat(),
+                    }
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )

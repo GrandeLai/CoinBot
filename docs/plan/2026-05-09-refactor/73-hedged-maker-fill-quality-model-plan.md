@@ -45,20 +45,20 @@
 
 ## Tasks
 
-- [ ] Add RED tests for partial fill, stale quote cancel/requote, cancel latency, and adverse hedge slippage.
-- [ ] Add `HedgedMakerConfig` fields:
+- [x] Add RED tests for partial fill, stale quote cancel/requote, cancel latency, and adverse hedge slippage.
+- [x] Add `HedgedMakerConfig` fields:
   - `paper_queue_ahead_pct`
   - `paper_min_fill_pct`
   - `paper_stale_quote_seconds`
   - `paper_cancel_latency_seconds`
   - `paper_adverse_selection_buffer_pct`
   - `paper_adverse_hedge_slippage_multiplier`
-- [ ] Implement fill quality calculation and partial-open state.
-- [ ] Implement stale quote cancel/requote.
-- [ ] Implement cancel-pending state and delayed cancellation.
-- [ ] Implement adverse selection detection and hedge slippage multiplier.
-- [ ] Update configs, README, DESIGN, acceptance checklist, traceability matrix, and phase report.
-- [ ] Run verification:
+- [x] Implement fill quality calculation and partial-open state.
+- [x] Implement stale quote cancel/requote.
+- [x] Implement cancel-pending state and delayed cancellation.
+- [x] Implement adverse selection detection and hedge slippage multiplier.
+- [x] Update configs, README, DESIGN, acceptance checklist, traceability matrix, and phase report.
+- [x] Run verification:
 
 ```bash
 cd backend
@@ -67,7 +67,7 @@ UV_CACHE_DIR=.uv-cache uv run ruff check src/ tests/
 UV_CACHE_DIR=.uv-cache uv run mypy src/
 ```
 
-- [ ] Run CLI smoke with temp runtime paths:
+- [x] Run CLI smoke with temp runtime paths:
 
 ```bash
 cd backend

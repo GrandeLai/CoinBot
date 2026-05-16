@@ -69,6 +69,12 @@ def test_loads_safe_example_config() -> None:
     assert settings.hedged_maker.hedge_exchange == "mock_alt"
     assert settings.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
     assert settings.hedged_maker.min_edge_pct == Decimal("0.15")
+    assert settings.hedged_maker.paper_queue_ahead_pct == Decimal("50")
+    assert settings.hedged_maker.paper_min_fill_pct == Decimal("25")
+    assert settings.hedged_maker.paper_stale_quote_seconds == 0
+    assert settings.hedged_maker.paper_cancel_latency_seconds == 0
+    assert settings.hedged_maker.paper_adverse_selection_buffer_pct == Decimal("0.05")
+    assert settings.hedged_maker.paper_adverse_hedge_slippage_multiplier == Decimal("2")
 
 
 def test_strategy_runtime_autopilot_defaults_are_safe() -> None:
@@ -111,6 +117,12 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.hedged_maker.maker_exchange == "mock"
     assert demo.hedged_maker.hedge_exchange == "mock_alt"
     assert demo.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
+    assert demo.hedged_maker.paper_queue_ahead_pct == Decimal("50")
+    assert demo.hedged_maker.paper_min_fill_pct == Decimal("25")
+    assert demo.hedged_maker.paper_stale_quote_seconds == 0
+    assert demo.hedged_maker.paper_cancel_latency_seconds == 0
+    assert demo.hedged_maker.paper_adverse_selection_buffer_pct == Decimal("0.05")
+    assert demo.hedged_maker.paper_adverse_hedge_slippage_multiplier == Decimal("2")
 
     assert live.app.mode == "live"
     assert live.trading.live_trading is True

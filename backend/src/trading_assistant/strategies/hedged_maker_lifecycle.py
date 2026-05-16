@@ -17,7 +17,17 @@ from trading_assistant.strategies.models import OrderLifecyclePlan
 from trading_assistant.utils.serialization import to_jsonable
 
 
-LifecycleStatus = Literal["quoted", "active_quote_unchanged", "replaced_after_ttl", "requoted", "filled_and_hedged", "blocked_open_order_limit"]
+LifecycleStatus = Literal[
+    "quoted",
+    "active_quote_unchanged",
+    "replaced_after_ttl",
+    "stale_requoted",
+    "requoted",
+    "cancel_pending",
+    "filled_and_hedged",
+    "partially_filled_and_hedged",
+    "blocked_open_order_limit",
+]
 
 
 @dataclass(frozen=True)
@@ -62,14 +72,47 @@ class HedgedMakerPaperLifecycleService:
         current_time = _as_utc(now or datetime.now(tz=UTC))
         state = self.read_state()
         orders = _orders_from_state(state)
-        canceled_order_ids = self._cancel_expired_orders(orders, lifecycle, current_time)
+        completed_cancel_events = self._complete_pending_cancels(orders, current_time)
         fill_result = self._fill_first_crossed_order(orders, opportunity, current_time)
         if fill_result is not None:
             self._write_state(orders, current_time)
             return fill_result
+        cancel_events = [
+            *completed_cancel_events,
+            *self._cancel_expired_orders(orders, lifecycle, current_time),
+            *self._cancel_stale_orders(orders, current_time),
+        ]
+        pending_event = next((event for event in cancel_events if event["status"] == "cancel_pending"), None)
+        if pending_event is not None:
+            self._write_state(orders, current_time)
+            return HedgedMakerLifecycleResult(
+                status="cancel_pending",
+                state_path=str(self.path),
+                paper_order=to_jsonable(pending_event["order"]),
+                hedge_order=None,
+                canceled_order_ids=[],
+                active_order_count=_active_order_count(orders),
+                expected_net_profit_usdt=_decimal(pending_event["order"].get("expected_net_profit_usdt")),
+                realized_net_profit_usdt=Decimal("0"),
+                message="Paper maker quote cancel is pending during simulated cancel latency.",
+            )
+        canceled_order_ids = [str(event["order_id"]) for event in cancel_events if event["status"] == "canceled"]
 
         matching_open = self._matching_open_order(orders, opportunity)
         if matching_open is not None:
+            if matching_open.get("status") == "cancel_pending":
+                self._write_state(orders, current_time)
+                return HedgedMakerLifecycleResult(
+                    status="cancel_pending",
+                    state_path=str(self.path),
+                    paper_order=to_jsonable(matching_open),
+                    hedge_order=None,
+                    canceled_order_ids=canceled_order_ids,
+                    active_order_count=_active_order_count(orders),
+                    expected_net_profit_usdt=_decimal(matching_open.get("expected_net_profit_usdt")),
+                    realized_net_profit_usdt=Decimal("0"),
+                    message="Paper maker quote cancel is pending during simulated cancel latency.",
+                )
             if self._needs_reprice(matching_open, opportunity, lifecycle):
                 matching_open["status"] = "replaced"
                 matching_open["updated_at"] = current_time.isoformat()
@@ -111,8 +154,19 @@ class HedgedMakerPaperLifecycleService:
                 message="Paper maker quote blocked by max_open_orders_per_strategy.",
             )
 
-        status: Literal["quoted", "replaced_after_ttl"] = "replaced_after_ttl" if canceled_order_ids else "quoted"
-        message = "Expired paper maker quote was canceled and replaced." if canceled_order_ids else "New paper maker quote recorded."
+        stale_requoted = any(event.get("reason") == "stale_quote" for event in cancel_events)
+        status: Literal["quoted", "replaced_after_ttl", "stale_requoted"]
+        if stale_requoted:
+            status = "stale_requoted"
+        else:
+            status = "replaced_after_ttl" if canceled_order_ids else "quoted"
+        message = (
+            "Stale paper maker quote was canceled and replaced."
+            if stale_requoted
+            else "Expired paper maker quote was canceled and replaced."
+            if canceled_order_ids
+            else "New paper maker quote recorded."
+        )
         result = self._create_quote_result(
             orders=orders,
             opportunity=opportunity,
@@ -141,7 +195,7 @@ class HedgedMakerPaperLifecycleService:
         *,
         orders: list[dict[str, Any]],
         opportunity: ArbitrageOpportunity,
-        status: Literal["quoted", "replaced_after_ttl", "requoted"],
+        status: Literal["quoted", "replaced_after_ttl", "stale_requoted", "requoted"],
         canceled_order_ids: list[str],
         now: datetime,
         message: str,
@@ -183,25 +237,61 @@ class HedgedMakerPaperLifecycleService:
             "updated_at": now.isoformat(),
         }
 
+    def _complete_pending_cancels(self, orders: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
+        for order in orders:
+            if order.get("status") != "cancel_pending":
+                continue
+            effective_at = _parse_time(order.get("cancel_effective_at"))
+            if effective_at is None or now < effective_at:
+                continue
+            order["status"] = "canceled"
+            order["updated_at"] = now.isoformat()
+            order["canceled_at"] = now.isoformat()
+            events.append({"order_id": str(order["order_id"]), "status": "canceled", "reason": str(order.get("cancel_reason", "cancel_pending")), "order": order})
+        return events
+
     def _cancel_expired_orders(
         self,
         orders: list[dict[str, Any]],
         lifecycle: OrderLifecyclePlan,
         now: datetime,
-    ) -> list[str]:
-        canceled: list[str] = []
+    ) -> list[dict[str, Any]]:
+        events: list[dict[str, Any]] = []
         ttl = timedelta(seconds=lifecycle.order_ttl_seconds)
         for order in orders:
-            if order.get("status") != "open":
+            if not _is_cancelable_status(order.get("status")):
                 continue
             created_at = _parse_time(order.get("created_at"))
             if created_at is not None and now - created_at > ttl:
-                order["status"] = "canceled"
-                order["updated_at"] = now.isoformat()
-                order["canceled_at"] = now.isoformat()
-                order["cancel_reason"] = "ttl_expired"
-                canceled.append(str(order["order_id"]))
-        return canceled
+                events.append(self._request_cancel(order, "ttl_expired", now))
+        return events
+
+    def _cancel_stale_orders(self, orders: list[dict[str, Any]], now: datetime) -> list[dict[str, Any]]:
+        if self.settings.hedged_maker.paper_stale_quote_seconds <= 0:
+            return []
+        events: list[dict[str, Any]] = []
+        stale_after = timedelta(seconds=self.settings.hedged_maker.paper_stale_quote_seconds)
+        for order in orders:
+            if not _is_cancelable_status(order.get("status")):
+                continue
+            created_at = _parse_time(order.get("created_at"))
+            if created_at is not None and now - created_at > stale_after:
+                events.append(self._request_cancel(order, "stale_quote", now))
+        return events
+
+    def _request_cancel(self, order: dict[str, Any], reason: str, now: datetime) -> dict[str, Any]:
+        latency = self.settings.hedged_maker.paper_cancel_latency_seconds
+        order["cancel_reason"] = reason
+        order["updated_at"] = now.isoformat()
+        if latency > 0:
+            order["status"] = "cancel_pending"
+            order["cancel_requested_at"] = now.isoformat()
+            order["cancel_effective_at"] = (now + timedelta(seconds=latency)).isoformat()
+            return {"order_id": str(order["order_id"]), "status": "cancel_pending", "reason": reason, "order": order}
+        order["status"] = "canceled"
+        order["canceled_at"] = now.isoformat()
+        return {"order_id": str(order["order_id"]), "status": "canceled", "reason": reason, "order": order}
 
     def _fill_first_crossed_order(
         self,
@@ -210,19 +300,26 @@ class HedgedMakerPaperLifecycleService:
         now: datetime,
     ) -> HedgedMakerLifecycleResult | None:
         for order in orders:
-            if order.get("status") != "open":
+            if not _is_open_status(order.get("status")):
                 continue
             if not self._is_crossed(order):
                 continue
-            hedge_order, net_profit = self._hedge_fill(order, now)
-            order["status"] = "filled"
+            fill_quantity = self._fill_quantity(order)
+            hedge_order, net_profit = self._hedge_fill(order, now, fill_quantity)
+            open_quantity = _open_quantity(order)
+            filled_quantity = _decimal(order.get("filled_quantity")) + fill_quantity
+            remaining_quantity = max(open_quantity - fill_quantity, Decimal("0"))
+            fully_filled = remaining_quantity == 0
+            order["status"] = "filled" if fully_filled else "partial_open"
             order["updated_at"] = now.isoformat()
             order["filled_at"] = now.isoformat()
             order["hedged_at"] = now.isoformat()
             order["hedge_order"] = hedge_order
+            order["filled_quantity"] = str(filled_quantity)
+            order["remaining_quantity"] = str(remaining_quantity)
             order["realized_net_profit_usdt"] = str(net_profit)
             return HedgedMakerLifecycleResult(
-                status="filled_and_hedged",
+                status="filled_and_hedged" if fully_filled else "partially_filled_and_hedged",
                 state_path=str(self.path),
                 paper_order=to_jsonable(order),
                 hedge_order=to_jsonable(hedge_order),
@@ -241,20 +338,30 @@ class HedgedMakerPaperLifecycleService:
         maker_side = str(order.get("maker_side"))
         return price >= ticker.ask if maker_side == "buy" else price <= ticker.bid
 
-    def _hedge_fill(self, order: dict[str, Any], now: datetime) -> tuple[dict[str, Any], Decimal]:
+    def _fill_quantity(self, order: dict[str, Any]) -> Decimal:
+        open_quantity = _open_quantity(order)
+        fill_ratio_pct = _fill_ratio_pct(
+            queue_ahead_pct=self.settings.hedged_maker.paper_queue_ahead_pct,
+            min_fill_pct=self.settings.hedged_maker.paper_min_fill_pct,
+        )
+        return open_quantity * fill_ratio_pct / Decimal("100")
+
+    def _hedge_fill(self, order: dict[str, Any], now: datetime, quantity: Decimal) -> tuple[dict[str, Any], Decimal]:
         hedge = self.exchanges.get(str(order["hedge_exchange"]))
         ticker = hedge.get_ticker(str(order["symbol"]))
         hedge_side = str(order.get("hedge_side"))
         maker_side = str(order.get("maker_side"))
-        quantity = _decimal(order.get("quantity"))
         maker_price = _decimal(order.get("price"))
         hedge_price = ticker.bid if hedge_side == "sell" else ticker.ask
         maker_notional = maker_price * quantity
         hedge_notional = hedge_price * quantity
+        adverse_selection = self._is_adverse_selection(order)
+        hedge_slippage_multiplier = self.settings.hedged_maker.paper_adverse_hedge_slippage_multiplier if adverse_selection else Decimal("1")
+        effective_slippage_pct = self.settings.hedged_maker.hedge_slippage_pct * hedge_slippage_multiplier
         sell_notional = hedge_notional if hedge_side == "sell" else maker_notional
         buy_notional = maker_notional if maker_side == "buy" else hedge_notional
         fees = maker_notional * self.settings.hedged_maker.maker_fee_pct + hedge_notional * self.settings.hedged_maker.taker_fee_pct
-        slippage = hedge_notional * self.settings.hedged_maker.hedge_slippage_pct
+        slippage = hedge_notional * effective_slippage_pct
         net_profit = sell_notional - buy_notional - fees - slippage
         hedge_order = {
             "exchange": str(order["hedge_exchange"]),
@@ -269,15 +376,38 @@ class HedgedMakerPaperLifecycleService:
             "maker_fill_notional_usdt": str(maker_notional),
             "estimated_fee_usdt": str(fees),
             "estimated_slippage_usdt": str(slippage),
+            "adverse_selection": adverse_selection,
+            "hedge_slippage_multiplier": str(hedge_slippage_multiplier),
+            "effective_hedge_slippage_pct": str(effective_slippage_pct),
+            "fill_quality": {
+                "queue_ahead_pct": str(self.settings.hedged_maker.paper_queue_ahead_pct),
+                "fill_ratio_pct": str(
+                    _fill_ratio_pct(
+                        queue_ahead_pct=self.settings.hedged_maker.paper_queue_ahead_pct,
+                        min_fill_pct=self.settings.hedged_maker.paper_min_fill_pct,
+                    )
+                ),
+                "filled_quantity": str(quantity),
+            },
             "realized_net_profit_usdt": str(net_profit),
         }
         return hedge_order, net_profit
+
+    def _is_adverse_selection(self, order: dict[str, Any]) -> bool:
+        maker = self.exchanges.get(str(order["maker_exchange"]))
+        ticker = maker.get_ticker(str(order["symbol"]))
+        maker_mid = (ticker.bid + ticker.ask) / Decimal("2")
+        buffer_pct = self.settings.hedged_maker.paper_adverse_selection_buffer_pct / Decimal("100")
+        maker_price = _decimal(order.get("price"))
+        if str(order.get("maker_side")) == "buy":
+            return maker_price > maker_mid * (Decimal("1") + buffer_pct)
+        return maker_price < maker_mid * (Decimal("1") - buffer_pct)
 
     def _matching_open_order(self, orders: list[dict[str, Any]], opportunity: ArbitrageOpportunity) -> dict[str, Any] | None:
         maker_quote = _mapping(opportunity.metadata.get("maker_quote"))
         hedge_preview = _mapping(opportunity.metadata.get("hedge_preview"))
         for order in orders:
-            if order.get("status") != "open":
+            if not _is_open_status(order.get("status")):
                 continue
             if order.get("symbol") != opportunity.symbol:
                 continue
@@ -324,6 +454,25 @@ def _decimal(value: object) -> Decimal:
     return Decimal(str(value or "0"))
 
 
+def _is_open_status(value: object) -> bool:
+    return str(value) in {"open", "partial_open", "cancel_pending"}
+
+
+def _is_cancelable_status(value: object) -> bool:
+    return str(value) in {"open", "partial_open"}
+
+
+def _open_quantity(order: dict[str, Any]) -> Decimal:
+    remaining = order.get("remaining_quantity")
+    if remaining is not None:
+        return _decimal(remaining)
+    return _decimal(order.get("quantity"))
+
+
+def _fill_ratio_pct(*, queue_ahead_pct: Decimal, min_fill_pct: Decimal) -> Decimal:
+    return min(max(Decimal("100") - queue_ahead_pct, min_fill_pct), Decimal("100"))
+
+
 def _parse_time(value: object) -> datetime | None:
     if not isinstance(value, str) or not value:
         return None
@@ -338,7 +487,7 @@ def _as_utc(value: datetime) -> datetime:
 
 
 def _active_order_count(orders: list[dict[str, Any]]) -> int:
-    return sum(1 for order in orders if order.get("status") == "open")
+    return sum(1 for order in orders if _is_open_status(order.get("status")))
 
 
 def _order_id(symbol: str, maker_side: str, sequence: int, now: datetime) -> str:

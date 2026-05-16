@@ -461,6 +461,12 @@ class HedgedMakerConfig(BaseModel):
     taker_fee_pct: Decimal = Decimal("0.001")
     hedge_slippage_pct: Decimal = Decimal("0.0002")
     min_hedge_depth_usdt: Decimal = Decimal("1000")
+    paper_queue_ahead_pct: Decimal = Decimal("50")
+    paper_min_fill_pct: Decimal = Decimal("25")
+    paper_stale_quote_seconds: int = 0
+    paper_cancel_latency_seconds: int = 0
+    paper_adverse_selection_buffer_pct: Decimal = Decimal("0.05")
+    paper_adverse_hedge_slippage_multiplier: Decimal = Decimal("2")
 
     @field_validator("quote_notional_usdt", "min_hedge_depth_usdt")
     @classmethod
@@ -470,12 +476,45 @@ class HedgedMakerConfig(BaseModel):
             raise ValueError("must be positive")
         return value
 
-    @field_validator("quote_spread_pct", "min_edge_pct", "maker_fee_pct", "taker_fee_pct", "hedge_slippage_pct")
+    @field_validator(
+        "quote_spread_pct",
+        "min_edge_pct",
+        "maker_fee_pct",
+        "taker_fee_pct",
+        "hedge_slippage_pct",
+        "paper_queue_ahead_pct",
+        "paper_min_fill_pct",
+        "paper_adverse_selection_buffer_pct",
+    )
     @classmethod
     def non_negative_hedged_maker_thresholds(cls, value: Decimal) -> Decimal:
         """Require non-negative hedged-maker thresholds."""
         if value < 0:
             raise ValueError("must be non-negative")
+        return value
+
+    @field_validator("paper_queue_ahead_pct", "paper_min_fill_pct")
+    @classmethod
+    def bounded_hedged_maker_percentages(cls, value: Decimal) -> Decimal:
+        """Keep paper fill percentages inside percentile bounds."""
+        if value > Decimal("100"):
+            raise ValueError("must be at most 100")
+        return value
+
+    @field_validator("paper_stale_quote_seconds", "paper_cancel_latency_seconds")
+    @classmethod
+    def non_negative_hedged_maker_seconds(cls, value: int) -> int:
+        """Require non-negative paper lifecycle durations."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+    @field_validator("paper_adverse_hedge_slippage_multiplier")
+    @classmethod
+    def positive_hedged_maker_multiplier(cls, value: Decimal) -> Decimal:
+        """Require adverse-selection slippage multiplier to be at least one."""
+        if value < Decimal("1"):
+            raise ValueError("must be at least 1")
         return value
 
 

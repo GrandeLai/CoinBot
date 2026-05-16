@@ -213,6 +213,12 @@ hedged_maker:
   taker_fee_pct: "0.001"
   hedge_slippage_pct: "0.0002"
   min_hedge_depth_usdt: "1000"
+  paper_queue_ahead_pct: "50"
+  paper_min_fill_pct: "25"
+  paper_stale_quote_seconds: 0
+  paper_cancel_latency_seconds: 0
+  paper_adverse_selection_buffer_pct: "0.05"
+  paper_adverse_hedge_slippage_multiplier: "2"
 
 reporting:
   output_dir: reports
