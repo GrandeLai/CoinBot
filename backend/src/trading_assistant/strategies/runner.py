@@ -17,8 +17,9 @@ from trading_assistant.exceptions import ExchangeError, SafetyError
 from trading_assistant.risk.manager import RiskManager
 from trading_assistant.strategies.demo_execution import StrategyDemoExecutionService
 from trading_assistant.strategies.guard import RuntimeGuardDecision, StrategyRuntimeGuard
+from trading_assistant.strategies.hedged_maker_lifecycle import HedgedMakerPaperLifecycleService
 from trading_assistant.strategies.journal import StrategyJournal
-from trading_assistant.strategies.models import ExecutionMode, StrategyCycleResult, StrategyDefinition, StrategyRunResult
+from trading_assistant.strategies.models import ExecutionMode, StrategyCycleResult, StrategyDecision, StrategyDefinition, StrategyRunResult
 from trading_assistant.strategies.policy import StrategyPolicy
 from trading_assistant.strategies.preflight_buffer import AdaptivePreflightBufferService
 from trading_assistant.strategies.registry import StrategyRegistry
@@ -163,6 +164,39 @@ class StrategyRunner:
                 execution=None,
                 net_profit=selected.net_profit,
                 message=f"Strategy blocked: {', '.join(reasons)}",
+            )
+        if definition.name == "hedged-maker":
+            lifecycle_result = HedgedMakerPaperLifecycleService(self.settings, self.exchanges).apply(selected, lifecycle)
+            execution_payload = {
+                "opportunity_id": selected.opportunity_id,
+                "status": lifecycle_result.status,
+                "dry_run": True,
+                "paper_only": True,
+                "simulation_only": True,
+                "orders_sent": False,
+                "live_orders_sent": False,
+                "risk_decision": risk_decision.to_dict(),
+                "expected_net_profit": selected.net_profit,
+                "net_profit": lifecycle_result.realized_net_profit_usdt,
+                "hedged_maker_lifecycle": lifecycle_result.to_dict(),
+                "message": lifecycle_result.message,
+            }
+            decision: StrategyDecision = "blocked" if lifecycle_result.status == "blocked_open_order_limit" else "executed"
+            risk_reasons = ["paper_open_order_limit_reached"] if decision == "blocked" else []
+            return StrategyCycleResult(
+                cycle=cycle,
+                strategy_name=definition.name,
+                decision=decision,
+                execution_mode=mode,
+                opportunities_found=len(opportunities),
+                selected_opportunity_id=selected.opportunity_id,
+                risk_approved=decision == "executed",
+                risk_reasons=risk_reasons,
+                budget=budget,
+                lifecycle=lifecycle,
+                execution=execution_payload,
+                net_profit=lifecycle_result.realized_net_profit_usdt,
+                message=lifecycle_result.message,
             )
         execution = ExecutionEngine(self.settings, self.exchanges).execute(selected.opportunity_id, dry_run=True)
         return StrategyCycleResult(

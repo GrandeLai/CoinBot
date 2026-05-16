@@ -689,6 +689,8 @@ strategy_runtime:
   retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
   evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
   evolution_report_path: {tmp_path / "strategy-evolution.md"}
+hedged_maker:
+  paper_state_path: {tmp_path / "hedged-maker-paper-state.json"}
 """.strip(),
         encoding="utf-8",
     )
@@ -728,6 +730,13 @@ strategy_runtime:
     assert result["strategy_name"] == "hedged-maker"
     assert result["decision"] == "executed"
     assert result["execution"]["dry_run"] is True
+    lifecycle = result["execution"]["hedged_maker_lifecycle"]
+    assert lifecycle["status"] == "quoted"
+    assert lifecycle["orders_sent"] is False
+    assert lifecycle["live_orders_sent"] is False
+    assert lifecycle["realized_net_profit_usdt"] == "0"
+    assert (tmp_path / "hedged-maker-paper-state.json").exists()
+    assert payload["retrospective_after"]["open_issue_count"] == 0
 
 
 def test_cli_strategy_retrospective_empty_history(tmp_path: Path, capsys) -> None:

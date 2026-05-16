@@ -160,6 +160,7 @@ hedged_maker:
   enabled: true
   maker_exchange: mock
   hedge_exchange: mock_alt
+  paper_state_path: logs/hedged-maker-paper-state.json
   symbols:
     - BTC/USDT
     - ETH/USDT

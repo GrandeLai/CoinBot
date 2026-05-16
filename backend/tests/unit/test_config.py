@@ -67,6 +67,7 @@ def test_loads_safe_example_config() -> None:
     assert settings.hedged_maker.enabled is True
     assert settings.hedged_maker.maker_exchange == "mock"
     assert settings.hedged_maker.hedge_exchange == "mock_alt"
+    assert settings.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
     assert settings.hedged_maker.min_edge_pct == Decimal("0.15")
 
 
@@ -109,6 +110,7 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.range_grid.total_quote_usdt == Decimal("100")
     assert demo.hedged_maker.maker_exchange == "mock"
     assert demo.hedged_maker.hedge_exchange == "mock_alt"
+    assert demo.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
 
     assert live.app.mode == "live"
     assert live.trading.live_trading is True

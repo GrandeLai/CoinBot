@@ -188,7 +188,7 @@ class StrategyRetrospectiveService:
                         context,
                     )
                 )
-            if decision == "executed" and net_profit <= 0:
+            if decision == "executed" and net_profit <= 0 and not _is_pending_hedged_maker_quote(strategy_name, execution):
                 issues.append(self._issue(strategy_name, execution_mode, "execution_loss", "net_profit_non_positive", "warning", context))
             abort_reason = str(execution.get("abort_reason") or "")
             if str(execution.get("status") or "") == "aborted_unwound" or abort_reason:
@@ -685,6 +685,18 @@ def _issue_context(issue: dict[str, Any]) -> dict[str, Any]:
     """Return issue context as a dict."""
     context = issue.get("last_context")
     return dict(context) if isinstance(context, dict) else {}
+
+
+def _is_pending_hedged_maker_quote(strategy_name: str, execution: dict[str, Any]) -> bool:
+    """Return whether an executed paper result is an open hedged-maker quote, not a realized loss."""
+    if strategy_name != "hedged-maker":
+        return False
+    lifecycle = execution.get("hedged_maker_lifecycle")
+    if not isinstance(lifecycle, dict):
+        return False
+    if str(lifecycle.get("status")) not in {"quoted", "active_quote_unchanged", "replaced_after_ttl", "requoted"}:
+        return False
+    return _decimal(lifecycle.get("realized_net_profit_usdt", "0")) == 0
 
 
 def _preflight_optimization_action(strategy_name: str) -> str:

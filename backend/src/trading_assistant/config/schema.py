@@ -452,6 +452,7 @@ class HedgedMakerConfig(BaseModel):
     enabled: bool = True
     maker_exchange: str = "mock"
     hedge_exchange: str = "mock_alt"
+    paper_state_path: str = "logs/hedged-maker-paper-state.json"
     symbols: list[str] = Field(default_factory=lambda: ["BTC/USDT", "ETH/USDT"])
     quote_notional_usdt: Decimal = Decimal("100")
     quote_spread_pct: Decimal = Decimal("0.20")
