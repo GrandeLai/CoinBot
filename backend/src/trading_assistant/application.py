@@ -171,10 +171,61 @@ class TradingAssistantApp:
             }
         }
 
-    def backtest_run(self) -> dict[str, Any]:
+    def backtest_run(
+        self,
+        strategy_name: str | None = None,
+        symbol: str | None = None,
+        exchange: str | None = None,
+        bar: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
         """Return backtest payload."""
-        result = BacktestEngine(self.settings, self.exchanges).run()
+        result = BacktestEngine(self.settings, self.exchanges).run(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            exchange=exchange,
+            bar=bar,
+            limit=limit,
+        )
         return {"backtest": result.to_dict()}
+
+    def backtest_walk_forward(
+        self,
+        strategy_name: str | None = None,
+        symbol: str | None = None,
+        exchange: str | None = None,
+        bar: str | None = None,
+        limit: int | None = None,
+        windows: int | None = None,
+    ) -> dict[str, Any]:
+        """Return walk-forward backtest payload."""
+        report = BacktestEngine(self.settings, self.exchanges).walk_forward(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            exchange=exchange,
+            bar=bar,
+            limit=limit,
+            windows=windows,
+        )
+        return {"backtest_walk_forward": report.to_dict()}
+
+    def backtest_bias_check(
+        self,
+        strategy_name: str | None = None,
+        symbol: str | None = None,
+        exchange: str | None = None,
+        bar: str | None = None,
+        limit: int | None = None,
+    ) -> dict[str, Any]:
+        """Return backtest bias diagnostics payload."""
+        report = BacktestEngine(self.settings, self.exchanges).bias_check(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            exchange=exchange,
+            bar=bar,
+            limit=limit,
+        )
+        return {"backtest_bias_check": report.to_dict()}
 
     def report_generate(self, report_type: str) -> dict[str, Any]:
         """Return report payload."""

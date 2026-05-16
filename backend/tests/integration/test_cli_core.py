@@ -107,6 +107,70 @@ def test_cli_workflow_run_returns_full_route(capsys) -> None:
     assert payload["workflow"]["agent_live_readiness"]["ready"] is False
 
 
+def test_cli_backtest_realistic_walk_forward_and_bias_check(capsys) -> None:
+    code, payload = _invoke(
+        [
+            "backtest",
+            "run",
+            "--config",
+            str(EXAMPLE_CONFIG),
+            "--strategy",
+            "trend-breakout",
+            "--symbol",
+            "BTC/USDT",
+            "--exchange",
+            "mock",
+        ],
+        capsys,
+    )
+    assert code == 0
+    assert payload["backtest"]["read_only"] is True
+    assert payload["backtest"]["orders_sent"] is False
+    assert payload["backtest"]["live_orders_sent"] is False
+    assert payload["backtest"]["fill_model"]["completed_candles_only"] is True
+
+    code, payload = _invoke(
+        [
+            "backtest",
+            "walk-forward",
+            "--config",
+            str(EXAMPLE_CONFIG),
+            "--strategy",
+            "trend-breakout",
+            "--symbol",
+            "BTC/USDT",
+            "--exchange",
+            "mock",
+            "--windows",
+            "2",
+        ],
+        capsys,
+    )
+    assert code == 0
+    assert payload["backtest_walk_forward"]["read_only"] is True
+    assert payload["backtest_walk_forward"]["orders_sent"] is False
+    assert len(payload["backtest_walk_forward"]["windows"]) == 2
+
+    code, payload = _invoke(
+        [
+            "backtest",
+            "bias-check",
+            "--config",
+            str(EXAMPLE_CONFIG),
+            "--strategy",
+            "trend-breakout",
+            "--symbol",
+            "BTC/USDT",
+            "--exchange",
+            "mock",
+        ],
+        capsys,
+    )
+    assert code == 0
+    assert payload["backtest_bias_check"]["orders_sent"] is False
+    assert payload["backtest_bias_check"]["passed"] is True
+
+
 def test_cli_autopilot_run_status_and_report(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "autopilot.yaml"
     config_path.write_text(

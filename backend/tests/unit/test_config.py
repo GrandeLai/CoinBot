@@ -48,6 +48,13 @@ def test_loads_safe_example_config() -> None:
     assert settings.arbitrage.funding_max_basis_hedge_cost_pct == Decimal("0.30")
     assert settings.arbitrage.spot_perp_min_basis_pct == Decimal("0.05")
     assert settings.arbitrage.futures_basis_min_basis_pct == Decimal("0.05")
+    assert settings.backtest.exchange == "mock"
+    assert settings.backtest.symbol == "BTC/USDT"
+    assert settings.backtest.strategy == "trend-breakout"
+    assert settings.backtest.candles_limit == 120
+    assert settings.backtest.slippage_pct == Decimal("0.0005")
+    assert settings.backtest.walk_forward_windows == 2
+    assert settings.backtest.min_window_trades == 1
     assert settings.universe.enabled is True
     assert settings.universe.min_24h_volume_usdt == Decimal("100000")
     assert settings.universe.max_spread_pct == Decimal("0.10")

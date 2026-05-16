@@ -109,6 +109,14 @@ agent_trading:
 backtest:
   initial_capital_usdt: "10000"
   fee_pct: "0.001"
+  exchange: mock
+  symbol: BTC/USDT
+  strategy: trend-breakout
+  bar: 15m
+  candles_limit: 120
+  slippage_pct: "0.0005"
+  walk_forward_windows: 2
+  min_window_trades: 1
 
 directional:
   enabled: true

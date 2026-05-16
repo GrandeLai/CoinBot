@@ -31,17 +31,17 @@
 
 ## Task 1: Backtest Unit Tests
 
-- [ ] Add `backend/tests/unit/test_realistic_backtest.py`.
-- [ ] Test `BacktestEngine.run(strategy_name="trend-breakout", symbol="BTC/USDT", exchange="mock")` returns:
+- [x] Add `backend/tests/unit/test_realistic_backtest.py`.
+- [x] Test `BacktestEngine.run(strategy_name="trend-breakout", symbol="BTC/USDT", exchange="mock")` returns:
   - `read_only is True`
   - `orders_sent is False`
   - `live_orders_sent is False`
   - completed candle count greater than zero
   - a fill model containing fee, slippage, and completed-candle assumptions
   - a directional result for `trend-breakout`
-- [ ] Test `BacktestEngine.walk_forward(..., windows=2)` returns two windows with train and validation metrics and no-order evidence.
-- [ ] Test `BacktestEngine.bias_check(...)` returns `passed is True`, includes `completed_candles_only`, `warmup_window_enforced`, and `prefix_replay_stable` diagnostics, and sends no orders.
-- [ ] Verify RED:
+- [x] Test `BacktestEngine.walk_forward(..., windows=2)` returns two windows with train and validation metrics and no-order evidence.
+- [x] Test `BacktestEngine.bias_check(...)` returns `passed is True`, includes `completed_candles_only`, `warmup_window_enforced`, and `prefix_replay_stable` diagnostics, and sends no orders.
+- [x] Verify RED:
 
 ```bash
 cd backend
@@ -52,7 +52,7 @@ Expected: fail because the new methods/fields are not implemented.
 
 ## Task 2: Engine And Config Implementation
 
-- [ ] Extend `BacktestConfig` with:
+- [x] Extend `BacktestConfig` with:
   - `exchange: str = "mock"`
   - `symbol: str = "BTC/USDT"`
   - `strategy: str = "trend-breakout"`
@@ -60,24 +60,24 @@ Expected: fail because the new methods/fields are not implemented.
   - `candles_limit: int = 120`
   - `slippage_pct: Decimal = Decimal("0.0005")`
   - `walk_forward_windows: int = 2`
-  - `min_window_trades: int = 0`
-- [ ] Add validators for positive candle/window counts and non-negative money/fee/slippage thresholds.
-- [ ] Extend `BacktestResult` with no-order and realism fields while preserving existing `metrics`, `equity_curve`, and `mode` keys for current workflow tests.
-- [ ] Implement `BacktestEngine.run()`:
+  - `min_window_trades: int = 1`
+- [x] Add validators for positive candle/window counts and non-negative money/fee/slippage thresholds.
+- [x] Extend `BacktestResult` with no-order and realism fields while preserving existing `metrics`, `equity_curve`, and `mode` keys for current workflow tests.
+- [x] Implement `BacktestEngine.run()`:
   - Load completed candles from the selected exchange.
   - Run `DirectionalBacktestEngine` for directional strategies.
   - Build an equity curve from initial capital plus net PnL.
   - Return fill assumptions: completed candles only, next-bar open entry, fee/slippage adjusted, no partial-fill venue dispatch.
-- [ ] Implement `BacktestEngine.walk_forward()`:
+- [x] Implement `BacktestEngine.walk_forward()`:
   - Split completed candles into expanding train and forward validation windows.
   - Run the same engine on both sides.
   - Mark each window accepted when validation trades meet `min_window_trades`.
-- [ ] Implement `BacktestEngine.bias_check()`:
+- [x] Implement `BacktestEngine.bias_check()`:
   - Check completed-candle-only input.
   - Check warmup size is sufficient.
   - Replay strategy signals over prefixes twice and assert deterministic prefix replay.
   - Return diagnostic checks and reasons without claiming statistical certainty.
-- [ ] Verify GREEN:
+- [x] Verify GREEN:
 
 ```bash
 cd backend
@@ -88,17 +88,17 @@ Expected: pass.
 
 ## Task 3: CLI And Application Wiring
 
-- [ ] Add optional args to `backtest run`:
+- [x] Add optional args to `backtest run`:
   - `--config`
   - `--strategy`
   - `--symbol`
   - `--exchange`
   - `--bar`
   - `--limit`
-- [ ] Add `backtest walk-forward` with the same args plus `--windows`.
-- [ ] Add `backtest bias-check` with the same args.
-- [ ] Add application facade methods for walk-forward and bias-check.
-- [ ] Add CLI integration tests:
+- [x] Add `backtest walk-forward` with the same args plus `--windows`.
+- [x] Add `backtest bias-check` with the same args.
+- [x] Add application facade methods for walk-forward and bias-check.
+- [x] Add CLI integration tests:
 
 ```python
 code, payload = _invoke(["backtest", "run", "--config", str(EXAMPLE_CONFIG), "--strategy", "trend-breakout", "--symbol", "BTC/USDT", "--exchange", "mock"], capsys)
@@ -117,7 +117,7 @@ assert payload["backtest_bias_check"]["orders_sent"] is False
 assert payload["backtest_bias_check"]["passed"] is True
 ```
 
-- [ ] Run:
+- [x] Run:
 
 ```bash
 cd backend
@@ -128,18 +128,18 @@ Expected: pass.
 
 ## Task 4: Docs, Traceability, And Report
 
-- [ ] Update README with backtest command examples and caveats.
-- [ ] Update DESIGN with the backtest validation layer.
-- [ ] Add acceptance checklist entries for:
+- [x] Update README with backtest command examples and caveats.
+- [x] Update DESIGN with the backtest validation layer.
+- [x] Add acceptance checklist entries for:
   - `crypto-assistant backtest run --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
   - `crypto-assistant backtest walk-forward --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --windows 2 --json`
   - `crypto-assistant backtest bias-check --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
-- [ ] Add traceability row `R077 Realistic Backtest And Walk-Forward`.
-- [ ] Add phase report with actual verification results.
+- [x] Add traceability row `R077 Realistic Backtest And Walk-Forward`.
+- [x] Add phase report with actual verification results.
 
 ## Task 5: Verification And Commit
 
-- [ ] Run:
+- [x] Run:
 
 ```bash
 cd backend
@@ -152,7 +152,7 @@ UV_CACHE_DIR=.uv-cache uv run ruff check src/ tests/
 UV_CACHE_DIR=.uv-cache uv run mypy src/
 ```
 
-- [ ] Run CLI smoke:
+- [x] Run CLI smoke:
 
 ```bash
 cd backend
@@ -161,7 +161,7 @@ UV_CACHE_DIR=.uv-cache uv run crypto-assistant backtest walk-forward --config ..
 UV_CACHE_DIR=.uv-cache uv run crypto-assistant backtest bias-check --config ../configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json
 ```
 
-- [ ] Commit:
+- [x] Commit:
 
 ```bash
 git add backend/src/trading_assistant/backtesting/engine.py backend/src/trading_assistant/config/schema.py backend/src/trading_assistant/application.py backend/src/trading_assistant/cli/main.py backend/tests/unit/test_realistic_backtest.py backend/tests/unit/test_config.py backend/tests/integration/test_cli_core.py README.md docs/DESIGN.md docs/plan/2026-05-09-refactor/02-acceptance-checklist.md docs/plan/2026-05-09-refactor/03-traceability-matrix.md docs/plan/2026-05-09-refactor/67-realistic-backtest-walkforward-plan.md docs/plan/2026-05-09-refactor/68-realistic-backtest-walkforward-report.md configs/config.example.yaml configs/okx.demo.example.yaml

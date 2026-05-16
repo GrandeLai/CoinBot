@@ -132,10 +132,34 @@ def build_parser() -> argparse.ArgumentParser:
 
     backtest = subcommands.add_parser("backtest", help="Backtest commands")
     backtest_sub = backtest.add_subparsers(dest="backtest_command")
-    run = backtest_sub.add_parser("run", help="Run deterministic mock backtest")
+    run = backtest_sub.add_parser("run", help="Run completed-candle backtest")
     run.add_argument("--config", help="Path to YAML config")
+    run.add_argument("--strategy", help="Strategy name")
+    run.add_argument("--symbol", help="Trading symbol, e.g. BTC/USDT")
+    run.add_argument("--exchange", help="Exchange name")
+    run.add_argument("--bar", help="Candle bar, e.g. 15m, 1H, 1D")
+    run.add_argument("--limit", type=int, help="Maximum candle rows")
     _add_json(run)
     run.set_defaults(handler=_handle_backtest_run)
+    walk_forward = backtest_sub.add_parser("walk-forward", help="Run expanding-window walk-forward validation")
+    walk_forward.add_argument("--config", help="Path to YAML config")
+    walk_forward.add_argument("--strategy", help="Strategy name")
+    walk_forward.add_argument("--symbol", help="Trading symbol, e.g. BTC/USDT")
+    walk_forward.add_argument("--exchange", help="Exchange name")
+    walk_forward.add_argument("--bar", help="Candle bar, e.g. 15m, 1H, 1D")
+    walk_forward.add_argument("--limit", type=int, help="Maximum candle rows")
+    walk_forward.add_argument("--windows", type=int, help="Number of walk-forward windows")
+    _add_json(walk_forward)
+    walk_forward.set_defaults(handler=_handle_backtest_walk_forward)
+    bias_check = backtest_sub.add_parser("bias-check", help="Run no-order backtest bias diagnostics")
+    bias_check.add_argument("--config", help="Path to YAML config")
+    bias_check.add_argument("--strategy", help="Strategy name")
+    bias_check.add_argument("--symbol", help="Trading symbol, e.g. BTC/USDT")
+    bias_check.add_argument("--exchange", help="Exchange name")
+    bias_check.add_argument("--bar", help="Candle bar, e.g. 15m, 1H, 1D")
+    bias_check.add_argument("--limit", type=int, help="Maximum candle rows")
+    _add_json(bias_check)
+    bias_check.set_defaults(handler=_handle_backtest_bias_check)
 
     report = subcommands.add_parser("report", help="Report commands")
     report_sub = report.add_subparsers(dest="report_command")
@@ -505,8 +529,38 @@ def _handle_agent_operation_catalog(args: argparse.Namespace) -> tuple[dict[str,
 
 
 def _handle_backtest_run(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
-    payload = _app(args).backtest_run()
+    payload = _app(args).backtest_run(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        exchange=args.exchange,
+        bar=args.bar,
+        limit=args.limit,
+    )
     return payload, f"backtest trades={payload['backtest']['metrics']['trades']}"
+
+
+def _handle_backtest_walk_forward(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).backtest_walk_forward(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        exchange=args.exchange,
+        bar=args.bar,
+        limit=args.limit,
+        windows=args.windows,
+    )
+    summary = payload["backtest_walk_forward"]["summary"]
+    return payload, f"backtest_walk_forward windows={summary['window_count']} accepted={summary['accepted_windows']}"
+
+
+def _handle_backtest_bias_check(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).backtest_bias_check(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        exchange=args.exchange,
+        bar=args.bar,
+        limit=args.limit,
+    )
+    return payload, f"backtest_bias_check passed={payload['backtest_bias_check']['passed']}"
 
 
 def _handle_report_generate(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

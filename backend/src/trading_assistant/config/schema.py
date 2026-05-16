@@ -213,6 +213,46 @@ class BacktestConfig(BaseModel):
 
     initial_capital_usdt: Decimal = Decimal("10000")
     fee_pct: Decimal = Decimal("0.001")
+    exchange: str = "mock"
+    symbol: str = "BTC/USDT"
+    strategy: str = "trend-breakout"
+    bar: str = "15m"
+    candles_limit: int = 120
+    slippage_pct: Decimal = Decimal("0.0005")
+    walk_forward_windows: int = 2
+    min_window_trades: int = 1
+
+    @field_validator("candles_limit", "walk_forward_windows")
+    @classmethod
+    def positive_backtest_counts(cls, value: int) -> int:
+        """Require positive backtest counts."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("initial_capital_usdt")
+    @classmethod
+    def positive_backtest_capital(cls, value: Decimal) -> Decimal:
+        """Require positive initial capital."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator("fee_pct", "slippage_pct")
+    @classmethod
+    def non_negative_backtest_costs(cls, value: Decimal) -> Decimal:
+        """Require non-negative backtest costs."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+    @field_validator("min_window_trades")
+    @classmethod
+    def non_negative_backtest_counts(cls, value: int) -> int:
+        """Require non-negative trade thresholds."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
 
 
 class DirectionalConfig(BaseModel):

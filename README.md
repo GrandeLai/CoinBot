@@ -301,6 +301,36 @@ uv run crypto-assistant strategy position-report \
 
 `exit-optimize` simulates long-only triple-barrier exits across take-profit, stop-loss, trailing-stop, and time-limit candidates. It returns parameter proposals only; it does not edit configs or send orders.
 
+### Backtest Validation
+
+Backtest commands are read-only and use completed candles, fee/slippage-adjusted directional simulation, and no live order dispatch:
+
+```bash
+uv run crypto-assistant backtest run \
+  --config ../configs/config.example.yaml \
+  --strategy trend-breakout \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+
+uv run crypto-assistant backtest walk-forward \
+  --config ../configs/config.example.yaml \
+  --strategy trend-breakout \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --windows 2 \
+  --json
+
+uv run crypto-assistant backtest bias-check \
+  --config ../configs/config.example.yaml \
+  --strategy trend-breakout \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+```
+
+`backtest run` reports the fill model assumptions, including completed candles, next-bar entry, fee, and slippage. `walk-forward` splits candles into expanding train windows and forward validation windows. `bias-check` is a deterministic diagnostic for obvious local backtest hazards such as incomplete candles, missing warmup, or unstable prefix replay; it is not proof of future profitability.
+
 Strategy evolution is simulation-only. It reads journal evidence, softly archives weak strategies, creates revive candidates, and generates isolated parameter candidates without editing checked-in configs or enabling trading:
 
 ```bash
@@ -397,7 +427,7 @@ uv run crypto-assistant strategy promotion-status \
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
 | Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
-| Backtest/report/workflow | `backtest run`, `report generate`, `workflow run` |
+| Backtest/report/workflow | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
 
 Every machine-readable CLI command should support `--json`, and every CLI command should support `--help`.
 
