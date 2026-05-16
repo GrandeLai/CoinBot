@@ -68,6 +68,7 @@ def test_loads_safe_example_config() -> None:
     assert settings.hedged_maker.maker_exchange == "mock"
     assert settings.hedged_maker.hedge_exchange == "mock_alt"
     assert settings.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
+    assert settings.hedged_maker.demo_state_path == "logs/hedged-maker-demo-state.json"
     assert settings.hedged_maker.min_edge_pct == Decimal("0.15")
     assert settings.hedged_maker.paper_queue_ahead_pct == Decimal("50")
     assert settings.hedged_maker.paper_min_fill_pct == Decimal("25")
@@ -117,6 +118,8 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.hedged_maker.maker_exchange == "mock"
     assert demo.hedged_maker.hedge_exchange == "mock_alt"
     assert demo.hedged_maker.paper_state_path == "logs/hedged-maker-paper-state.json"
+    assert demo.hedged_maker.demo_state_path == "logs/hedged-maker-demo-state.json"
+    assert "hedged-maker" in demo.agent_trading.strategy_allowlist
     assert demo.hedged_maker.paper_queue_ahead_pct == Decimal("50")
     assert demo.hedged_maker.paper_min_fill_pct == Decimal("25")
     assert demo.hedged_maker.paper_stale_quote_seconds == 0

@@ -349,6 +349,11 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_hedged_maker_report.add_argument("--limit", type=int, default=50, help="Number of latest hedged-maker paper events to include")
     _add_json(strategy_hedged_maker_report)
     strategy_hedged_maker_report.set_defaults(handler=_handle_strategy_hedged_maker_report)
+    strategy_hedged_maker_demo = strategy_sub.add_parser("hedged-maker-demo", help="Run one OKX Demo hedged-maker manager step")
+    strategy_hedged_maker_demo.add_argument("--config", required=True, help="Path to OKX demo YAML config")
+    strategy_hedged_maker_demo.add_argument("--opportunity-file", required=True, help="Path to hedged-maker opportunity JSON file")
+    _add_json(strategy_hedged_maker_demo)
+    strategy_hedged_maker_demo.set_defaults(handler=_handle_strategy_hedged_maker_demo)
     strategy_carry_basis_optimize = strategy_sub.add_parser("carry-basis-optimize", help="Show read-only carry/basis optimization diagnostics")
     strategy_carry_basis_optimize.add_argument("--config", help="Path to YAML config")
     strategy_carry_basis_optimize.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
@@ -819,6 +824,12 @@ def _handle_strategy_hedged_maker_report(args: argparse.Namespace) -> tuple[dict
         f"strategy_hedged_maker_report events={report['scanned_events']} "
         f"fills={summary['fill_events']} adverse={summary['adverse_selection_events']}"
     )
+
+
+def _handle_strategy_hedged_maker_demo(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_hedged_maker_demo(opportunity_file=args.opportunity_file)
+    result = payload["strategy_hedged_maker_demo"]
+    return payload, f"strategy_hedged_maker_demo status={result['status']} live_orders_sent={result['live_orders_sent']}"
 
 
 def _handle_strategy_carry_basis_optimize(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

@@ -241,7 +241,7 @@ uv run crypto-assistant strategy hedged-maker-report \
   --json
 ```
 
-`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state.
+`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state; `hedged-maker-demo` is the separate OKX Demo opportunity-file manager.
 
 ## Strategy Families
 
@@ -251,7 +251,7 @@ uv run crypto-assistant strategy hedged-maker-report \
 | Triangular arbitrage | `triangular-multi-route` plus aliases `triangular` | Read-only discovery, paper, then OKX demo sampling when gates pass. |
 | Carry and basis | `funding-carry-hedged`, `spot-perp-carry`, `futures-perp-basis` | Offline diagnostics and paper until economics beat fees, slippage, holding cost, and basis hedge cost. |
 | Range grid | `range-grid` | Paper-only range-bound grid opportunity estimates; OKX Demo and live orders are not supported. |
-| Hedged maker / XEMM | `hedged-maker` | Paper-only passive quote planner with taker hedge preview; real maker orders are not supported. |
+| Hedged maker / XEMM | `hedged-maker` | Paper passive quote planner with taker hedge preview; an explicit OKX Demo manager exists for approved opportunity files, while live maker orders are not supported. |
 | Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
 
 Carry/basis tuning is read-only:
@@ -312,7 +312,18 @@ uv run crypto-assistant strategy hedged-maker-report \
   --json
 ```
 
-`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. Strategy budget output includes active/projected paper quote order count and capital, so `open`, `partial_open`, and not-yet-effective `cancel_pending` quotes constrain future capacity while matching quotes are not double-counted as new orders. `hedged-maker-report` reads the journal and paper state without touching exchanges, then summarizes fill events, lifecycle counts, adverse-selection rate, simulated PnL, and active quote state. It is deliberately excluded from OKX Demo and live execution until own-order tracking, quote cancel/refresh, adverse-selection controls, and sandbox parity tests exist.
+`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. Strategy budget output includes active/projected paper quote order count and capital, so `open`, `partial_open`, and not-yet-effective `cancel_pending` quotes constrain future capacity while matching quotes are not double-counted as new orders. `hedged-maker-report` reads the journal and paper state without touching exchanges, then summarizes fill events, lifecycle counts, adverse-selection rate, simulated PnL, and active quote state.
+
+The OKX Demo manager is a separate command for sandbox parity testing from an explicit opportunity file. It does not make the generic `strategy run --strategy hedged-maker --execution-mode demo` path available:
+
+```bash
+uv run crypto-assistant strategy hedged-maker-demo \
+  --config ../configs/okx.demo.example.yaml \
+  --opportunity-file hedged-maker-okx-opportunity.json \
+  --json
+```
+
+The opportunity file must describe a `strategy_type=hedged-maker` OKX opportunity with `maker_quote`, `hedge_preview`, and passing `execution_quality` metadata. The command requires OKX Demo credentials, `COINBOT_AGENT_OPERATOR_ID`, `agent_trading.allow_demo_orders=true`, the `hedged-maker` strategy allowlist, OKX exchange allowlist, risk approval, budget approval, provider demo-mode verification, and audit logging. It stores own-order state under `hedged_maker.demo_state_path`, submits maker quotes as OKX Demo `post_only` spot orders, cancels/replaces stale or repriced quotes, and sends the hedge only after observing a maker fill. Live maker orders are still unsupported.
 
 Directional exit tuning is also read-only:
 
@@ -437,6 +448,15 @@ uv run crypto-assistant strategy demo-sampling \
   --json
 ```
 
+For hedged-maker sandbox parity, use the explicit opportunity-file manager instead of the generic demo runtime:
+
+```bash
+uv run crypto-assistant strategy hedged-maker-demo \
+  --config ../configs/okx.demo.example.yaml \
+  --opportunity-file hedged-maker-okx-opportunity.json \
+  --json
+```
+
 Promotion remains evidence-only unless an operator explicitly changes the live gates:
 
 ```bash
@@ -458,7 +478,7 @@ uv run crypto-assistant strategy promotion-status \
 | Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
-| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
+| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
 | Backtest/report/workflow | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
 

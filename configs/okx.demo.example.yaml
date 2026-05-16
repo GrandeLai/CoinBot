@@ -42,6 +42,7 @@ agent_trading:
     - mean-reversion-spot
     - volatility-squeeze-breakout
     - momentum-rotation
+    - hedged-maker
   allowed_exchanges:
     - okx
   max_autonomous_order_value_usdt: "100"
@@ -161,6 +162,7 @@ hedged_maker:
   maker_exchange: mock
   hedge_exchange: mock_alt
   paper_state_path: logs/hedged-maker-paper-state.json
+  demo_state_path: logs/hedged-maker-demo-state.json
   symbols:
     - BTC/USDT
     - ETH/USDT

@@ -67,4 +67,15 @@ def default_operation_contracts() -> list[OperationContract]:
             demo_command="crypto-assistant agent execute-live --config configs/okx.demo.example.yaml --opportunity-file okx-opportunity.json --json",
             live_command="crypto-assistant agent execute-live --config configs/okx.live.example.yaml --opportunity-file okx-opportunity.json --json",
         ),
+        OperationContract(
+            operation_id="okx.hedged_maker_demo_order_manager",
+            exchange="okx",
+            description="Manage stateful OKX Demo post-only hedged-maker quotes from an approved opportunity JSON file.",
+            demo_supported=True,
+            live_supported=False,
+            demo_config="configs/okx.demo.example.yaml",
+            live_config="",
+            demo_command="crypto-assistant strategy hedged-maker-demo --config configs/okx.demo.example.yaml --opportunity-file hedged-maker-okx-opportunity.json --json",
+            live_command="",
+        ),
     ]

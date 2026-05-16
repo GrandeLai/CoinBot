@@ -38,6 +38,8 @@
 - [x] `docs/plan/2026-05-09-refactor/76-hedged-maker-paper-evaluation-report.md`
 - [x] `docs/plan/2026-05-09-refactor/77-hedged-maker-budget-state-plan.md`
 - [x] `docs/plan/2026-05-09-refactor/78-hedged-maker-budget-state-report.md`
+- [x] `docs/plan/2026-05-09-refactor/79-hedged-maker-okx-demo-manager-plan.md`
+- [x] `docs/plan/2026-05-09-refactor/80-hedged-maker-okx-demo-manager-report.md`
 - [x] `docs/plan/2026-05-09-refactor/99-final-acceptance-report.md`
 - [x] `configs/config.example.yaml`
 - [x] `.env.example`
@@ -74,6 +76,7 @@
 - [x] Autopilot stops immediately if a paper/demo payload reports `live_orders_sent=true`.
 - [x] OKX demo strategy runtime preflights profitability before sending canary orders, stops longer loops on demo stop-loss/drawdown, and reconciles cash-flow PnL against account-equity delta.
 - [x] OKX demo strategy execution fetches exchange fill receipts from `fills-history` and records receipt completeness, fee expense, and fill PnL in `pnl_validation.exchange_receipts`.
+- [x] OKX Demo hedged-maker manager handles explicit opportunity-file post-only maker quotes with own-order state, fill-triggered hedging, cancel/replace control, audit logging, and `live_orders_sent=false`.
 - [x] OKX demo profile supports controlled stage-1 position increase through `demo_order_size_multiplier=2` while keeping live trading disabled.
 - [x] OKX demo spot limit prices use orderbook best bid/ask when available plus configurable `demo_limit_price_buffer_pct`, so triangular preflight and execution share more realistic marketable prices.
 - [x] Post-R052 OKX demo 10-cycle validation passed with orderbook-based pricing: only `triangular-multi-route` executed, `executed=10`, `skipped=40`, `net_profit=15.863852`, `max_drawdown_usdt=0`, complete receipts, PnL within tolerance, residual inventory within tolerance, and no open spot orders, swap orders, or swap positions.

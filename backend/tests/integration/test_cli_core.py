@@ -286,11 +286,35 @@ def test_cli_agent_operation_catalog_reports_demo_validation(capsys) -> None:
     operation_ids = {operation["operation_id"] for operation in catalog["operations"]}
     assert "okx.sandbox_check" in operation_ids
     assert "okx.agent_spot_limit_order" in operation_ids
+    assert "okx.hedged_maker_demo_order_manager" in operation_ids
     for operation in catalog["operations"]:
         if operation["live_supported"]:
             assert operation["demo_supported"] is True
             assert operation["demo_config"] == "configs/okx.demo.example.yaml"
             assert "--config configs/okx.demo.example.yaml" in operation["demo_command"]
+
+
+def test_cli_strategy_hedged_maker_demo_blocks_default_config(tmp_path: Path, capsys) -> None:
+    opportunity_path = tmp_path / "hedged-maker-okx-opportunity.json"
+    opportunity_path.write_text(json.dumps(_hedged_maker_okx_opportunity_payload()), encoding="utf-8")
+
+    code = main(
+        [
+            "strategy",
+            "hedged-maker-demo",
+            "--config",
+            str(EXAMPLE_CONFIG),
+            "--opportunity-file",
+            str(opportunity_path),
+            "--json",
+        ]
+    )
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+
+    assert code != 0
+    assert payload["error"]["type"] == "SafetyError"
+    assert "dry_run_enabled" in payload["error"]["message"]
 
 
 def test_cli_strategy_list_run_and_review(tmp_path: Path, capsys) -> None:
@@ -815,6 +839,12 @@ strategy_runtime:
     assert hedged_maker_report_help_exit.value.code == 0
     assert "--limit" in hedged_maker_report_help_output.out
 
+    with pytest.raises(SystemExit) as hedged_maker_demo_help_exit:
+        main(["strategy", "hedged-maker-demo", "--help"])
+    hedged_maker_demo_help_output = capsys.readouterr()
+    assert hedged_maker_demo_help_exit.value.code == 0
+    assert "--opportunity-file" in hedged_maker_demo_help_output.out
+
     with pytest.raises(SystemExit) as operator_brief_help_exit:
         main(["strategy", "operator-brief", "--help"])
     operator_brief_help_output = capsys.readouterr()
@@ -1115,6 +1145,50 @@ def _okx_opportunity_payload() -> dict:
                 {"exchange": "okx", "side": "buy", "market": "spot", "symbol": "BTC/USDT", "price": "50010"},
                 {"exchange": "okx", "side": "sell", "market": "spot", "symbol": "BTC/USDT", "price": "50280"},
             ],
+        },
+    )
+    return opportunity.to_dict()
+
+
+def _hedged_maker_okx_opportunity_payload() -> dict:
+    opportunity = ArbitrageOpportunity(
+        opportunity_id="hm-okx-demo",
+        strategy_type="hedged-maker",
+        symbol="BTC/USDT",
+        buy_exchange="okx",
+        sell_exchange="okx",
+        expected_profit=Decimal("1.20"),
+        expected_profit_pct=Decimal("1.50"),
+        estimated_fee=Decimal("0.10"),
+        estimated_slippage=Decimal("0.01"),
+        required_capital=Decimal("80"),
+        net_profit=Decimal("1.09"),
+        risk_score=Decimal("0.20"),
+        confidence=Decimal("0.80"),
+        metadata={
+            "maker_quote": {
+                "exchange": "okx",
+                "symbol": "BTC/USDT",
+                "side": "buy",
+                "price": "79990",
+                "quantity": "0.001",
+                "notional_usdt": "79.99",
+            },
+            "hedge_preview": {
+                "exchange": "okx",
+                "symbol": "BTC/USDT",
+                "side": "sell",
+                "price": "79980",
+                "quantity": "0.001",
+                "notional_usdt": "79.98",
+            },
+            "execution_quality": {
+                "spread_persistence": {"passed": True},
+                "depth_fill": {
+                    "buy": {"complete": True},
+                    "sell": {"complete": True},
+                },
+            },
         },
     )
     return opportunity.to_dict()
