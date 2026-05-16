@@ -209,6 +209,18 @@ hedged_maker:
   paper_adverse_selection_buffer_pct: "0.05"
   paper_adverse_hedge_slippage_multiplier: "2"
 
+dex_lp:
+  enabled: false
+  gateway_enabled: false
+  gateway_url: null
+  network: none
+  wallet_address_env: COINBOT_DEX_WALLET_ADDRESS
+  wallet_policy_ack: false
+  gas_model_enabled: false
+  mev_protection_enabled: false
+  testnet_validation_required: true
+  testnet_validation_evidence_path: docs/plan/2026-05-09-refactor/dex-clmm-testnet-evidence.md
+
 strategy_runtime:
   default_execution_mode: paper
   enabled_strategies:

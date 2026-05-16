@@ -132,6 +132,7 @@ uv run crypto-assistant strategy catalog --config ../configs/config.example.yaml
 uv run crypto-assistant strategy scan --config ../configs/config.example.yaml --strategy all --symbol BTC/USDT --json
 uv run crypto-assistant strategy score --config ../configs/config.example.yaml --strategy all --json
 uv run crypto-assistant strategy advisory-rank --config ../configs/config.example.yaml --strategy all --execution-mode paper --window 24h --json
+uv run crypto-assistant strategy dex-lp-readiness --config ../configs/config.example.yaml --json
 uv run crypto-assistant strategy portfolio-status --config ../configs/config.example.yaml --json
 uv run crypto-assistant strategy opportunity-report --config ../configs/config.example.yaml --window 24h --json
 uv run crypto-assistant strategy universe --config ../configs/config.example.yaml --exchange mock --json
@@ -255,6 +256,7 @@ uv run crypto-assistant strategy hedged-maker-report \
 | Smart DCA basket | `smart-dca-basket` plus alias `smart-dca` | Paper-only drawdown-tiered accumulation and basket weight-band diagnostics for BTC/ETH/SOL. |
 | Hedged maker / XEMM | `hedged-maker` | Paper passive quote planner with taker hedge preview; an explicit OKX Demo manager exists for approved opportunity files, while live maker orders are not supported. |
 | Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
+| DEX/CLMM LP | `dex-lp-readiness` | Deferred readiness gate for future DEX liquidity provision; no wallet, gateway, LP, demo, or live execution is implemented. |
 
 Carry/basis tuning is read-only:
 
@@ -348,6 +350,16 @@ uv run crypto-assistant strategy hedged-maker-demo \
 ```
 
 The opportunity file must describe a `strategy_type=hedged-maker` OKX opportunity with `maker_quote`, `hedge_preview`, and passing `execution_quality` metadata. The command requires OKX Demo credentials, `COINBOT_AGENT_OPERATOR_ID`, `agent_trading.allow_demo_orders=true`, the `hedged-maker` strategy allowlist, OKX exchange allowlist, risk approval, budget approval, provider demo-mode verification, and audit logging. It stores own-order state under `hedged_maker.demo_state_path`, submits maker quotes as OKX Demo `post_only` spot orders, cancels/replaces stale or repriced quotes, and sends the hedge only after observing a maker fill. Live maker orders are still unsupported.
+
+DEX/CLMM liquidity provision is intentionally deferred. The readiness command is a no-order checklist for future testnet work:
+
+```bash
+uv run crypto-assistant strategy dex-lp-readiness \
+  --config ../configs/config.example.yaml \
+  --json
+```
+
+The command checks `dex_lp` config prerequisites such as DEX gateway configuration, testnet network selection, wallet policy acknowledgement, gas model, MEV protection, and testnet evidence. It never reads wallet secrets, connects to a DEX, mutates configs, or sends orders. Even when all testnet prerequisites are configured, it reports `execution_supported=false` and keeps live orders unsupported until a real DEX adapter, wallet policy, gas model, MEV controls, and testnet validation are implemented.
 
 Directional exit tuning is also read-only:
 
@@ -499,7 +511,7 @@ uv run crypto-assistant strategy promotion-status \
 | Config/status | `status`, `config validate` |
 | Exchange/market/account | `exchange list`, `exchange ping`, `exchange sandbox-check`, `market ticker`, `market orderbook`, `market candles`, `account balance` |
 | Arbitrage | `arbitrage scan`, `arbitrage execute` |
-| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy market-compare`, `strategy portfolio-status` |
+| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy dex-lp-readiness`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
 | Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |

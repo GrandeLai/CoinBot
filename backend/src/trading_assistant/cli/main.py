@@ -282,6 +282,10 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_advisory_rank.add_argument("--window", default="24h", help="Opportunity-density journal window, e.g. 24h or 7d")
     _add_json(strategy_advisory_rank)
     strategy_advisory_rank.set_defaults(handler=_handle_strategy_advisory_rank)
+    strategy_dex_lp_readiness = strategy_sub.add_parser("dex-lp-readiness", help="Show read-only DEX/CLMM LP readiness gate")
+    strategy_dex_lp_readiness.add_argument("--config", help="Path to YAML config")
+    _add_json(strategy_dex_lp_readiness)
+    strategy_dex_lp_readiness.set_defaults(handler=_handle_strategy_dex_lp_readiness)
     strategy_market_compare = strategy_sub.add_parser("market-compare", help="Compare mock baseline scans with a target exchange")
     strategy_market_compare.add_argument("--config", help="Path to YAML config")
     strategy_market_compare.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -720,6 +724,12 @@ def _handle_strategy_advisory_rank(args: argparse.Namespace) -> tuple[dict[str, 
     report = payload["strategy_advisory_rank"]
     top = report["rankings"][0]["strategy_name"] if report["rankings"] else "none"
     return payload, f"strategy_advisory_rank rankings={len(report['rankings'])} top={top}"
+
+
+def _handle_strategy_dex_lp_readiness(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_dex_lp_readiness()
+    report = payload["strategy_dex_lp_readiness"]
+    return payload, f"strategy_dex_lp_readiness status={report['status']} testnet_ready={report['testnet_ready']}"
 
 
 def _handle_strategy_market_compare(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

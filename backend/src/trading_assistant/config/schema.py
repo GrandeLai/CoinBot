@@ -610,6 +610,33 @@ class HedgedMakerConfig(BaseModel):
         return value
 
 
+class DexLpConfig(BaseModel):
+    """Read-only DEX/CLMM LP readiness controls.
+
+    This config deliberately does not enable DEX execution. It only records
+    whether the operator has prepared the prerequisites for future testnet work.
+    """
+
+    enabled: bool = False
+    gateway_enabled: bool = False
+    gateway_url: str | None = None
+    network: Literal["none", "testnet", "mainnet"] = "none"
+    wallet_address_env: str = "COINBOT_DEX_WALLET_ADDRESS"
+    wallet_policy_ack: bool = False
+    gas_model_enabled: bool = False
+    mev_protection_enabled: bool = False
+    testnet_validation_required: bool = True
+    testnet_validation_evidence_path: str = "docs/plan/2026-05-09-refactor/dex-clmm-testnet-evidence.md"
+
+    @field_validator("wallet_address_env")
+    @classmethod
+    def dex_env_uses_coinbot_prefix(cls, value: str) -> str:
+        """Require DEX wallet env references to use the project prefix."""
+        if not value.startswith("COINBOT_"):
+            raise ValueError("must use COINBOT_ prefix")
+        return value
+
+
 class ReportingConfig(BaseModel):
     """Report generation settings."""
 
@@ -810,6 +837,7 @@ class Settings(BaseModel):
     range_grid: RangeGridConfig = Field(default_factory=RangeGridConfig)
     smart_dca: SmartDcaConfig = Field(default_factory=SmartDcaConfig)
     hedged_maker: HedgedMakerConfig = Field(default_factory=HedgedMakerConfig)
+    dex_lp: DexLpConfig = Field(default_factory=DexLpConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     strategy_runtime: StrategyRuntimeConfig = Field(default_factory=StrategyRuntimeConfig)
 

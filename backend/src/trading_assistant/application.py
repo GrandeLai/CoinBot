@@ -30,6 +30,7 @@ from trading_assistant.strategies.demo_validation import StrategyDemoValidationS
 from trading_assistant.strategies.evolution import StrategyEvolutionService
 from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
 from trading_assistant.strategies.advisory_ranker import StrategyAdvisoryRankerService
+from trading_assistant.strategies.dex_readiness import DexLpReadinessService
 from trading_assistant.strategies.guard import StrategyRuntimeGuard
 from trading_assistant.strategies.hedged_maker_demo import HedgedMakerDemoOrderManager
 from trading_assistant.strategies.hedged_maker_report import HedgedMakerPaperEvaluationReportService
@@ -430,6 +431,10 @@ class TradingAssistantApp:
             window=window,
         )
         return {"strategy_advisory_rank": report.to_dict()}
+
+    def strategy_dex_lp_readiness(self) -> dict[str, Any]:
+        """Return read-only DEX/CLMM LP prerequisite status."""
+        return {"strategy_dex_lp_readiness": DexLpReadinessService(self.settings).report().to_dict()}
 
     def strategy_market_compare(self, strategy_name: str, symbol: str, target_exchange: str | None = None) -> dict[str, Any]:
         """Compare mock baseline strategy scans against a configured target exchange."""

@@ -44,6 +44,8 @@
 - [x] `docs/plan/2026-05-09-refactor/82-smart-dca-basket-report.md`
 - [x] `docs/plan/2026-05-09-refactor/83-advisory-ranker-plan.md`
 - [x] `docs/plan/2026-05-09-refactor/84-advisory-ranker-report.md`
+- [x] `docs/plan/2026-05-09-refactor/85-dex-clmm-readiness-plan.md`
+- [x] `docs/plan/2026-05-09-refactor/86-dex-clmm-readiness-report.md`
 - [x] `docs/plan/2026-05-09-refactor/99-final-acceptance-report.md`
 - [x] `configs/config.example.yaml`
 - [x] `.env.example`
@@ -114,6 +116,7 @@
 - [x] Strategy market comparison provides a read-only mock baseline versus target-exchange scan before OKX demo preflight, with `orders_sent=false`, no journal writes, and no retrospective mutation.
 - [x] Strategy opportunity report provides read-only opportunity-density metrics from the journal, including scan count, candidate count, skip reasons, expected-vs-actual gap, account-equity delta, route/symbol distribution, observation-pool gaps, and demo size-stage readiness.
 - [x] Strategy advisory ranker combines scorecards, rolling validation evidence, opportunity density, and runtime guard state into read-only deterministic rankings without external model calls, config mutation, or order dispatch.
+- [x] DEX/CLMM LP remains deferred behind a read-only readiness gate that reports missing gateway, wallet-policy, gas, MEV, and testnet-evidence prerequisites without touching wallets or DEX networks.
 - [x] Dynamic universe and regime reports filter configured symbols by spread, volume, depth, and completed-candle behavior without sending orders.
 - [x] Triple-barrier exit optimization simulates take-profit, stop-loss, trailing-stop, and time-limit exits without editing configs or sending orders.
 - [x] Range-grid strategy scans range-bound symbols, estimates grid-cycle paper PnL after fees/slippage, and stays demo/live disabled.
@@ -173,6 +176,7 @@
 - [x] `crypto-assistant strategy score --strategy all --json`
 - [x] `crypto-assistant strategy score --strategy directional-all --json`
 - [x] `crypto-assistant strategy advisory-rank --config configs/config.example.yaml --strategy smart-dca-basket --execution-mode paper --symbol SOL/USDT --window 24h --json`
+- [x] `crypto-assistant strategy dex-lp-readiness --config configs/config.example.yaml --json`
 - [x] `crypto-assistant strategy market-compare --config configs/okx.demo.example.yaml --strategy all --symbol BTC/USDT --target-exchange okx --json`
 - [x] `crypto-assistant strategy portfolio-status --json`
 - [x] `crypto-assistant strategy run --config configs/config.example.yaml --strategy all --max-cycles 1 --interval-seconds 0 --execution-mode paper --json`

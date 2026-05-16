@@ -831,6 +831,31 @@ strategy_runtime:
     assert report["rankings"][0]["recommendation"] in {"prioritize_paper_validation", "collect_more_samples"}
 
 
+def test_cli_strategy_dex_lp_readiness_is_read_only(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "dex-readiness.yaml"
+    config_path.write_text(
+        """
+dex_lp:
+  enabled: false
+  gateway_enabled: false
+  network: none
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(["strategy", "dex-lp-readiness", "--config", str(config_path)], capsys)
+
+    assert code == 0
+    report = payload["strategy_dex_lp_readiness"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["status"] == "Deferred"
+    assert report["testnet_ready"] is False
+    assert report["execution_supported"] is False
+    assert "dex_lp_disabled" in report["reasons"]
+
+
 def test_cli_strategy_hedged_maker_scans_and_runs_in_paper(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "hedged-maker.yaml"
     config_path.write_text(
@@ -997,6 +1022,12 @@ strategy_runtime:
     advisory_rank_help_output = capsys.readouterr()
     assert advisory_rank_help_exit.value.code == 0
     assert "--window" in advisory_rank_help_output.out
+
+    with pytest.raises(SystemExit) as dex_lp_help_exit:
+        main(["strategy", "dex-lp-readiness", "--help"])
+    dex_lp_help_output = capsys.readouterr()
+    assert dex_lp_help_exit.value.code == 0
+    assert "--config" in dex_lp_help_output.out
 
     with pytest.raises(SystemExit) as discover_routes_help_exit:
         main(["strategy", "discover-routes", "--help"])
