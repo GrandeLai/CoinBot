@@ -214,6 +214,31 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_opportunity_report.add_argument("--window", default="24h", help="Journal window, e.g. 24h or 7d")
     _add_json(strategy_opportunity_report)
     strategy_opportunity_report.set_defaults(handler=_handle_strategy_opportunity_report)
+    strategy_universe = strategy_sub.add_parser("universe", help="Show read-only dynamic universe and regime filter output")
+    strategy_universe.add_argument("--config", help="Path to YAML config")
+    strategy_universe.add_argument("--exchange", default="mock", help="Exchange name")
+    _add_json(strategy_universe)
+    strategy_universe.set_defaults(handler=_handle_strategy_universe)
+    strategy_regime_report = strategy_sub.add_parser("regime-report", help="Show read-only regime evidence for one symbol")
+    strategy_regime_report.add_argument("--config", help="Path to YAML config")
+    strategy_regime_report.add_argument("--exchange", default="mock", help="Exchange name")
+    strategy_regime_report.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    _add_json(strategy_regime_report)
+    strategy_regime_report.set_defaults(handler=_handle_strategy_regime_report)
+    strategy_exit_optimize = strategy_sub.add_parser("exit-optimize", help="Show read-only triple-barrier exit parameter proposals")
+    strategy_exit_optimize.add_argument("--config", help="Path to YAML config")
+    strategy_exit_optimize.add_argument("--strategy", default="trend-breakout", help="Strategy name")
+    strategy_exit_optimize.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_exit_optimize.add_argument("--exchange", default="mock", help="Exchange name")
+    _add_json(strategy_exit_optimize)
+    strategy_exit_optimize.set_defaults(handler=_handle_strategy_exit_optimize)
+    strategy_position_report = strategy_sub.add_parser("position-report", help="Show read-only triple-barrier position simulation")
+    strategy_position_report.add_argument("--config", help="Path to YAML config")
+    strategy_position_report.add_argument("--strategy", default="trend-breakout", help="Strategy name")
+    strategy_position_report.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_position_report.add_argument("--exchange", default="mock", help="Exchange name")
+    _add_json(strategy_position_report)
+    strategy_position_report.set_defaults(handler=_handle_strategy_position_report)
     strategy_score = strategy_sub.add_parser("score", help="Score strategy opportunities and validation evidence")
     strategy_score.add_argument("--config", help="Path to YAML config")
     strategy_score.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -568,6 +593,38 @@ def _handle_strategy_opportunity_report(args: argparse.Namespace) -> tuple[dict[
         f"strategy_opportunity_report scans={report['scan_count']} "
         f"candidates={report['demo_preflight_candidate_count']} executed={report['executed_count']}"
     )
+
+
+def _handle_strategy_universe(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_universe(exchange=args.exchange)
+    report = payload["strategy_universe"]
+    return payload, f"strategy_universe exchange={report['exchange']} accepted={len(report['accepted_symbols'])}"
+
+
+def _handle_strategy_regime_report(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_regime_report(exchange=args.exchange, symbol=args.symbol)
+    report = payload["strategy_regime_report"]
+    return payload, f"strategy_regime symbol={report['symbol']} regime={report['regime']} accepted={report['accepted']}"
+
+
+def _handle_strategy_exit_optimize(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_exit_optimize(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        exchange=args.exchange,
+    )
+    report = payload["strategy_exit_optimization"]
+    return payload, f"strategy_exit_optimization candidates={len(report['candidates'])} orders_sent={report['orders_sent']}"
+
+
+def _handle_strategy_position_report(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_position_report(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        exchange=args.exchange,
+    )
+    report = payload["strategy_position_report"]
+    return payload, f"strategy_position_report exit={report['exit_reason']} net_pnl={report['net_pnl_usdt']}"
 
 
 def _handle_strategy_score(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

@@ -498,6 +498,65 @@ strategy_runtime:
     assert "demo_break_even_gap_usdt:0.258630" in spot_perp["reasons"]
 
 
+def test_cli_strategy_universe_regime_and_exit_commands(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "strategy.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as universe_help_exit:
+        main(["strategy", "universe", "--help"])
+    universe_help = capsys.readouterr()
+    assert universe_help_exit.value.code == 0
+    assert "--exchange" in universe_help.out
+
+    with pytest.raises(SystemExit) as exit_help_exit:
+        main(["strategy", "exit-optimize", "--help"])
+    exit_help = capsys.readouterr()
+    assert exit_help_exit.value.code == 0
+    assert "--strategy" in exit_help.out
+
+    code, payload = _invoke(["strategy", "universe", "--config", str(config_path), "--exchange", "mock"], capsys)
+    assert code == 0
+    assert payload["strategy_universe"]["read_only"] is True
+    assert payload["strategy_universe"]["orders_sent"] is False
+    assert payload["strategy_universe"]["accepted_symbols"]
+
+    code, payload = _invoke(
+        ["strategy", "regime-report", "--config", str(config_path), "--exchange", "mock", "--symbol", "BTC/USDT"],
+        capsys,
+    )
+    assert code == 0
+    assert payload["strategy_regime_report"]["symbol"] == "BTC/USDT"
+    assert payload["strategy_regime_report"]["accepted"] is True
+
+    code, payload = _invoke(
+        ["strategy", "exit-optimize", "--config", str(config_path), "--strategy", "trend-breakout", "--symbol", "BTC/USDT", "--exchange", "mock"],
+        capsys,
+    )
+    assert code == 0
+    assert payload["strategy_exit_optimization"]["read_only"] is True
+    assert payload["strategy_exit_optimization"]["orders_sent"] is False
+    assert payload["strategy_exit_optimization"]["candidates"]
+
+    code, payload = _invoke(
+        ["strategy", "position-report", "--config", str(config_path), "--strategy", "trend-breakout", "--symbol", "BTC/USDT", "--exchange", "mock"],
+        capsys,
+    )
+    assert code == 0
+    assert payload["strategy_position_report"]["read_only"] is True
+    assert payload["strategy_position_report"]["live_orders_sent"] is False
+
+
 def test_cli_strategy_retrospective_empty_history(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "strategy.yaml"
     config_path.write_text(

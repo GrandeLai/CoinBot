@@ -102,6 +102,8 @@
 - [x] Carry/basis strategy scans enforce configurable quality gates for minimum funding annualized percentage, maximum basis hedge cost percentage, minimum spot-perp basis percentage, and minimum futures-perp basis percentage.
 - [x] Strategy market comparison provides a read-only mock baseline versus target-exchange scan before OKX demo preflight, with `orders_sent=false`, no journal writes, and no retrospective mutation.
 - [x] Strategy opportunity report provides read-only opportunity-density metrics from the journal, including scan count, candidate count, skip reasons, expected-vs-actual gap, account-equity delta, route/symbol distribution, observation-pool gaps, and demo size-stage readiness.
+- [x] Dynamic universe and regime reports filter configured symbols by spread, volume, depth, and completed-candle behavior without sending orders.
+- [x] Triple-barrier exit optimization simulates take-profit, stop-loss, trailing-stop, and time-limit exits without editing configs or sending orders.
 - [x] Triangular route discovery reads spot instruments, keeps configured routes as priority routes, expands to accepted instrument-driven routes, and reports filtered routes with reasons without sending orders.
 - [x] Triangular multi-route scanning can use `--route-mode discovered` and records multi-level orderbook expected fill prices, submitted limit prices, fee/slippage estimates, depth consumed, and min-size adjustments.
 - [x] Latest OKX read-only comparison found no current demo-preflight candidates across the five configured strategies; non-triangular strategies were blocked by funding/basis/net-profit diagnostics rather than by forced demo orders.
@@ -143,6 +145,8 @@
 - [x] `crypto-assistant strategy discover-routes --config configs/config.example.yaml --exchange mock --quote USDT --json`
 - [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy triangular-multi-route --exchange mock --route-mode discovered --json`
 - [x] `crypto-assistant strategy opportunity-report --config configs/config.example.yaml --window 24h --json`
+- [x] `crypto-assistant strategy universe --config configs/config.example.yaml --exchange mock --json`
+- [x] `crypto-assistant strategy regime-report --config configs/config.example.yaml --exchange mock --symbol BTC/USDT --json`
 - [x] `crypto-assistant strategy scan --strategy directional-all --symbol BTC/USDT --json`
 - [x] `crypto-assistant strategy scan --config configs/config.example.yaml --strategy spot-perp-carry --symbol BTC/USDT --json` includes `diagnostics`.
 - [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --symbol BTC/USDT --json` passes after carry/basis quality gates.
@@ -170,6 +174,8 @@
 - [x] `crypto-assistant strategy revival-window --config configs/config.example.yaml --strategy all --cycles 1 --symbol BTC/USDT --json`
 - [x] `crypto-assistant strategy validation-report --config configs/okx.demo.example.yaml --execution-mode demo --strategy all --limit 50 --json`
 - [x] `crypto-assistant strategy validation-report --config configs/config.example.yaml --execution-mode paper --strategy directional-all --limit 50 --json`
+- [x] `crypto-assistant strategy exit-optimize --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
+- [x] `crypto-assistant strategy position-report --config configs/config.example.yaml --strategy trend-breakout --symbol BTC/USDT --exchange mock --json`
 - [x] `crypto-assistant strategy validate-demo --config configs/okx.demo.example.yaml --strategy all --symbol BTC/USDT --allow-account-mode-switch --json` exists, supports `--help`, requires local validation first, and validates all demo-supported allowlisted paths including `funding-carry-hedged`, `spot-perp-carry`, and `futures-perp-basis`.
 - [x] `crypto-assistant strategy validate-local --config configs/config.example.yaml --strategy all --cycles 1 --json`
 - [x] `crypto-assistant strategy validate-demo-window --config configs/okx.demo.example.yaml --strategy all --cycles 10 --json`

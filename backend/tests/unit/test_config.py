@@ -48,6 +48,11 @@ def test_loads_safe_example_config() -> None:
     assert settings.arbitrage.funding_max_basis_hedge_cost_pct == Decimal("0.30")
     assert settings.arbitrage.spot_perp_min_basis_pct == Decimal("0.05")
     assert settings.arbitrage.futures_basis_min_basis_pct == Decimal("0.05")
+    assert settings.universe.enabled is True
+    assert settings.universe.min_24h_volume_usdt == Decimal("100000")
+    assert settings.universe.max_spread_pct == Decimal("0.10")
+    assert settings.exit_optimization.take_profit_candidates_pct == [Decimal("1.00"), Decimal("2.00"), Decimal("3.00")]
+    assert settings.exit_optimization.time_limit_candidates_bars == [8, 16, 32]
 
 
 def test_strategy_runtime_autopilot_defaults_are_safe() -> None:
@@ -83,6 +88,8 @@ def test_loads_separate_okx_demo_and_live_configs(monkeypatch: pytest.MonkeyPatc
     assert demo.strategy_runtime.retrospective_demo_preflight_score_penalty == Decimal("30")
     assert demo.arbitrage.funding_min_annualized_pct == Decimal("20")
     assert demo.arbitrage.funding_max_basis_hedge_cost_pct == Decimal("0.30")
+    assert demo.universe.candles_limit == 120
+    assert demo.exit_optimization.max_candidates == 5
 
     assert live.app.mode == "live"
     assert live.trading.live_trading is True

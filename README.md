@@ -133,6 +133,8 @@ uv run crypto-assistant strategy scan --config ../configs/config.example.yaml --
 uv run crypto-assistant strategy score --config ../configs/config.example.yaml --strategy all --json
 uv run crypto-assistant strategy portfolio-status --config ../configs/config.example.yaml --json
 uv run crypto-assistant strategy opportunity-report --config ../configs/config.example.yaml --window 24h --json
+uv run crypto-assistant strategy universe --config ../configs/config.example.yaml --exchange mock --json
+uv run crypto-assistant strategy regime-report --config ../configs/config.example.yaml --exchange mock --symbol BTC/USDT --json
 ```
 
 For triangular route expansion:
@@ -254,6 +256,28 @@ uv run crypto-assistant strategy carry-basis-optimize \
   --json
 ```
 
+Dynamic universe and regime routing are read-only foundations for the next profit-expansion layer. `strategy universe` filters configured symbols by spread, 24h quote volume, depth, and completed-candle behavior; `strategy regime-report` classifies a symbol as `trend`, `range`, `carry`, `illiquid`, or `avoid` so future strategy selection can route range markets to grid/mean-reversion, trends to breakout/momentum, and carry regimes to basis/funding scans.
+
+Directional exit tuning is also read-only:
+
+```bash
+uv run crypto-assistant strategy exit-optimize \
+  --config ../configs/config.example.yaml \
+  --strategy trend-breakout \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+
+uv run crypto-assistant strategy position-report \
+  --config ../configs/config.example.yaml \
+  --strategy trend-breakout \
+  --symbol BTC/USDT \
+  --exchange mock \
+  --json
+```
+
+`exit-optimize` simulates long-only triple-barrier exits across take-profit, stop-loss, trailing-stop, and time-limit candidates. It returns parameter proposals only; it does not edit configs or send orders.
+
 Strategy evolution is simulation-only. It reads journal evidence, softly archives weak strategies, creates revive candidates, and generates isolated parameter candidates without editing checked-in configs or enabling trading:
 
 ```bash
@@ -345,10 +369,10 @@ uv run crypto-assistant strategy promotion-status \
 | Config/status | `status`, `config validate` |
 | Exchange/market/account | `exchange list`, `exchange ping`, `exchange sandbox-check`, `market ticker`, `market orderbook`, `market candles`, `account balance` |
 | Arbitrage | `arbitrage scan`, `arbitrage execute` |
-| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy score`, `strategy market-compare`, `strategy portfolio-status` |
+| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
-| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy carry-basis-optimize` |
+| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
 | Backtest/report/workflow | `backtest run`, `report generate`, `workflow run` |
 

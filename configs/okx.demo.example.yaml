@@ -105,6 +105,43 @@ directional:
   fee_pct: "0.001"
   slippage_pct: "0.0002"
 
+universe:
+  enabled: true
+  symbols:
+    - BTC/USDT
+    - ETH/USDT
+    - SOL/USDT
+    - XRP/USDT
+    - DOGE/USDT
+    - ADA/USDT
+  bar: 15m
+  candles_limit: 120
+  min_24h_volume_usdt: "100000"
+  min_depth_usdt: "1000"
+  max_spread_pct: "0.10"
+  trend_return_threshold_pct: "1.00"
+  range_volatility_max_pct: "1.25"
+
+exit_optimization:
+  enabled: true
+  take_profit_candidates_pct:
+    - "1.00"
+    - "2.00"
+    - "3.00"
+  stop_loss_candidates_pct:
+    - "0.50"
+    - "1.00"
+    - "1.50"
+  trailing_stop_candidates_pct:
+    - "0"
+    - "0.50"
+    - "1.00"
+  time_limit_candidates_bars:
+    - 8
+    - 16
+    - 32
+  max_candidates: 5
+
 strategy_runtime:
   default_execution_mode: paper
   enabled_strategies:

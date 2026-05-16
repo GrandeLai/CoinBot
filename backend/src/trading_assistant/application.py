@@ -37,12 +37,14 @@ from trading_assistant.strategies.operator_brief import StrategyOperatorBriefSer
 from trading_assistant.strategies.opportunity_density import OpportunityDensityService
 from trading_assistant.strategies.platform import StrategyCatalog, StrategyController, StrategyPortfolioService, StrategyScoreService
 from trading_assistant.strategies.pnl_attribution import StrategyPnlAttributionService
+from trading_assistant.strategies.position_executor import ExitOptimizerService
 from trading_assistant.strategies.registry import StrategyRegistry
 from trading_assistant.strategies.retrospective import StrategyRetrospectiveService
 from trading_assistant.strategies.revival import StrategyRevivalWindowService
 from trading_assistant.strategies.candidate_backtest import StrategyCandidateBacktestService
 from trading_assistant.strategies.review import StrategyReviewService
 from trading_assistant.strategies.runner import StrategyRunner
+from trading_assistant.strategies.universe import StrategyUniverseService
 from trading_assistant.strategies.validation_report import StrategyValidationReportService
 from trading_assistant.validation.demo_window_orchestrator import StrategyDemoWindowOrchestrator
 from trading_assistant.validation.demo_sampling_scheduler import StrategyDemoSamplingScheduler
@@ -323,6 +325,34 @@ class TradingAssistantApp:
     def strategy_opportunity_report(self, window: str = "24h") -> dict[str, Any]:
         """Return read-only opportunity-density evidence from the strategy journal."""
         return {"strategy_opportunity_report": OpportunityDensityService(self.settings.strategy_runtime).report(window=window).to_dict()}
+
+    def strategy_universe(self, exchange: str) -> dict[str, Any]:
+        """Return read-only dynamic universe and regime evidence."""
+        report = StrategyUniverseService(self.settings, self.exchanges).report(exchange=exchange)
+        return {"strategy_universe": report.to_dict()}
+
+    def strategy_regime_report(self, exchange: str, symbol: str) -> dict[str, Any]:
+        """Return read-only regime evidence for one symbol."""
+        report = StrategyUniverseService(self.settings, self.exchanges).symbol_report(exchange=exchange, symbol=symbol)
+        return {"strategy_regime_report": report.to_dict()}
+
+    def strategy_exit_optimize(self, strategy_name: str, symbol: str, exchange: str) -> dict[str, Any]:
+        """Return read-only triple-barrier exit parameter proposals."""
+        report = ExitOptimizerService(self.settings, self.exchanges).optimize(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            exchange=exchange,
+        )
+        return {"strategy_exit_optimization": report.to_dict()}
+
+    def strategy_position_report(self, strategy_name: str, symbol: str, exchange: str) -> dict[str, Any]:
+        """Return read-only triple-barrier position simulation evidence."""
+        report = ExitOptimizerService(self.settings, self.exchanges).position_report(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            exchange=exchange,
+        )
+        return {"strategy_position_report": report.to_dict()}
 
     def strategy_score(self, strategy_name: str, symbol: str) -> dict[str, Any]:
         """Score strategies through the strategy platform."""

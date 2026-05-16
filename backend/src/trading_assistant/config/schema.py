@@ -280,6 +280,85 @@ class DirectionalConfig(BaseModel):
         return value
 
 
+class UniverseConfig(BaseModel):
+    """Read-only market universe and regime filter controls."""
+
+    enabled: bool = True
+    symbols: list[str] = Field(default_factory=lambda: ["BTC/USDT", "ETH/USDT", "SOL/USDT", "XRP/USDT", "DOGE/USDT", "ADA/USDT"])
+    bar: str = "15m"
+    candles_limit: int = 80
+    min_24h_volume_usdt: Decimal = Decimal("100000")
+    min_depth_usdt: Decimal = Decimal("1000")
+    max_spread_pct: Decimal = Decimal("0.10")
+    trend_return_threshold_pct: Decimal = Decimal("1.00")
+    range_volatility_max_pct: Decimal = Decimal("1.25")
+
+    @field_validator("candles_limit")
+    @classmethod
+    def positive_universe_candle_limit(cls, value: int) -> int:
+        """Require a positive universe candle limit."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+    @field_validator(
+        "min_24h_volume_usdt",
+        "min_depth_usdt",
+        "max_spread_pct",
+        "trend_return_threshold_pct",
+        "range_volatility_max_pct",
+    )
+    @classmethod
+    def non_negative_universe_thresholds(cls, value: Decimal) -> Decimal:
+        """Require non-negative universe thresholds."""
+        if value < 0:
+            raise ValueError("must be non-negative")
+        return value
+
+
+class ExitOptimizationConfig(BaseModel):
+    """Read-only triple-barrier exit optimization controls."""
+
+    enabled: bool = True
+    take_profit_candidates_pct: list[Decimal] = Field(default_factory=lambda: [Decimal("1.00"), Decimal("2.00"), Decimal("3.00")])
+    stop_loss_candidates_pct: list[Decimal] = Field(default_factory=lambda: [Decimal("0.50"), Decimal("1.00"), Decimal("1.50")])
+    trailing_stop_candidates_pct: list[Decimal] = Field(default_factory=lambda: [Decimal("0"), Decimal("0.50"), Decimal("1.00")])
+    time_limit_candidates_bars: list[int] = Field(default_factory=lambda: [8, 16, 32])
+    max_candidates: int = 5
+
+    @field_validator("take_profit_candidates_pct", "stop_loss_candidates_pct")
+    @classmethod
+    def positive_exit_candidate_pcts(cls, value: list[Decimal]) -> list[Decimal]:
+        """Require positive take-profit and stop-loss candidates."""
+        if not value or any(item <= 0 for item in value):
+            raise ValueError("must contain positive values")
+        return value
+
+    @field_validator("trailing_stop_candidates_pct")
+    @classmethod
+    def non_negative_trailing_candidates(cls, value: list[Decimal]) -> list[Decimal]:
+        """Require non-negative trailing-stop candidates."""
+        if not value or any(item < 0 for item in value):
+            raise ValueError("must contain non-negative values")
+        return value
+
+    @field_validator("time_limit_candidates_bars")
+    @classmethod
+    def positive_time_limit_candidates(cls, value: list[int]) -> list[int]:
+        """Require positive time-limit candidates."""
+        if not value or any(item <= 0 for item in value):
+            raise ValueError("must contain positive values")
+        return value
+
+    @field_validator("max_candidates")
+    @classmethod
+    def positive_exit_max_candidates(cls, value: int) -> int:
+        """Require a positive number of returned candidates."""
+        if value <= 0:
+            raise ValueError("must be positive")
+        return value
+
+
 class ReportingConfig(BaseModel):
     """Report generation settings."""
 
@@ -472,6 +551,8 @@ class Settings(BaseModel):
     agent_trading: AgentTradingConfig = Field(default_factory=AgentTradingConfig)
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)
     directional: DirectionalConfig = Field(default_factory=DirectionalConfig)
+    universe: UniverseConfig = Field(default_factory=UniverseConfig)
+    exit_optimization: ExitOptimizationConfig = Field(default_factory=ExitOptimizationConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     strategy_runtime: StrategyRuntimeConfig = Field(default_factory=StrategyRuntimeConfig)
 
