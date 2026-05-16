@@ -738,13 +738,40 @@ hedged_maker:
     assert (tmp_path / "hedged-maker-paper-state.json").exists()
     assert payload["retrospective_after"]["open_issue_count"] == 0
 
+    code, payload = _invoke(
+        [
+            "strategy",
+            "run",
+            "--config",
+            str(config_path),
+            "--strategy",
+            "hedged-maker",
+            "--symbol",
+            "BTC/USDT",
+            "--max-cycles",
+            "1",
+            "--interval-seconds",
+            "0",
+            "--execution-mode",
+            "paper",
+        ],
+        capsys,
+    )
+    assert code == 0
+    result = payload["strategy_run"]["results"][0]
+    assert result["execution"]["hedged_maker_lifecycle"]["status"] == "active_quote_unchanged"
+    assert result["budget"]["active_orders"] == 1
+    assert result["budget"]["projected_open_orders"] == 1
+    assert Decimal(result["budget"]["active_capital_usdt"]) > Decimal("0")
+    assert result["budget"]["projected_strategy_capital_usdt"] == result["budget"]["active_capital_usdt"]
+
     code, payload = _invoke(["strategy", "hedged-maker-report", "--config", str(config_path), "--limit", "10"], capsys)
     assert code == 0
     report = payload["strategy_hedged_maker_report"]
     assert report["read_only"] is True
     assert report["orders_sent"] is False
     assert report["live_orders_sent"] is False
-    assert report["scanned_events"] == 1
+    assert report["scanned_events"] == 2
     assert report["summary"]["lifecycle_counts"]["quoted"] == 1
     assert report["summary"]["active_state_orders"] == 1
 

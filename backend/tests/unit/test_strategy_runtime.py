@@ -66,6 +66,39 @@ def test_strategy_policy_blocks_when_position_cap_is_too_low() -> None:
     assert "max_position_value_usdt" in decision.reasons
 
 
+def test_strategy_policy_uses_projected_order_and_capital_budget() -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    settings.strategy_runtime.max_open_orders_per_strategy = 2
+    settings.strategy_runtime.max_strategy_capital_usdt = Decimal("250")
+    opportunity = StrategyRunner(settings, ExchangeFactory(settings)).scan_once("cross-exchange")[0]
+
+    capital_block = StrategyPolicy(settings.strategy_runtime).evaluate(
+        "cross-exchange",
+        opportunity,
+        active_orders=1,
+        active_capital_usdt=Decimal("175"),
+        additional_orders=1,
+        additional_capital_usdt=Decimal("100"),
+    )
+    order_block = StrategyPolicy(settings.strategy_runtime).evaluate(
+        "cross-exchange",
+        opportunity,
+        active_orders=2,
+        active_capital_usdt=Decimal("0"),
+        additional_orders=1,
+        additional_capital_usdt=Decimal("0"),
+    )
+
+    assert capital_block.approved is False
+    assert "max_strategy_capital_usdt" in capital_block.reasons
+    assert capital_block.active_capital_usdt == Decimal("175")
+    assert capital_block.projected_strategy_capital_usdt == Decimal("275")
+    assert capital_block.projected_open_orders == 2
+    assert order_block.approved is False
+    assert "max_open_orders_per_strategy" in order_block.reasons
+    assert order_block.projected_open_orders == 3
+
+
 def test_strategy_runner_executes_all_strategies_and_records_journal(tmp_path: Path) -> None:
     settings = load_settings(EXAMPLE_CONFIG)
     settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")

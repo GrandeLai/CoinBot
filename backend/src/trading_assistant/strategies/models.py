@@ -51,7 +51,10 @@ class StrategyBudgetDecision:
     max_position_value_usdt: Decimal
     max_strategy_capital_usdt: Decimal
     active_orders: int
+    projected_open_orders: int
     max_open_orders_per_strategy: int
+    active_capital_usdt: Decimal = Decimal("0")
+    projected_strategy_capital_usdt: Decimal = Decimal("0")
 
     def to_dict(self) -> dict[str, Any]:
         """Return JSON-safe budget decision."""

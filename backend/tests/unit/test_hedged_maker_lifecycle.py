@@ -214,6 +214,74 @@ def test_hedged_maker_lifecycle_marks_adverse_selection_and_expands_hedge_slippa
     assert result.hedge_order["effective_hedge_slippage_pct"] == str(settings.hedged_maker.hedge_slippage_pct * Decimal("3"))
 
 
+def test_hedged_maker_lifecycle_budget_state_counts_active_non_expired_quotes(tmp_path: Path) -> None:
+    settings = _settings(tmp_path)
+    opportunity = _opportunity(settings)
+    lifecycle = StrategyPolicy(settings.strategy_runtime).lifecycle_plan()
+    state_path = Path(settings.hedged_maker.paper_state_path)
+    state_path.write_text(
+        json.dumps(
+            {
+                "orders": [
+                    _paper_order(
+                        order_id="matching-open",
+                        symbol="BTC/USDT",
+                        status="open",
+                        price="50000",
+                        quantity="0.002",
+                        created_at=NOW.isoformat(),
+                    ),
+                    _paper_order(
+                        order_id="partial-eth",
+                        symbol="ETH/USDT",
+                        status="partial_open",
+                        price="3000",
+                        quantity="0.02",
+                        remaining_quantity="0.01",
+                        created_at=NOW.isoformat(),
+                    ),
+                    _paper_order(
+                        order_id="pending-future",
+                        symbol="SOL/USDT",
+                        status="cancel_pending",
+                        price="100",
+                        quantity="0.5",
+                        created_at=NOW.isoformat(),
+                        cancel_effective_at=(NOW + timedelta(seconds=5)).isoformat(),
+                    ),
+                    _paper_order(
+                        order_id="pending-complete",
+                        symbol="XRP/USDT",
+                        status="cancel_pending",
+                        price="1",
+                        quantity="50",
+                        created_at=NOW.isoformat(),
+                        cancel_effective_at=(NOW - timedelta(seconds=1)).isoformat(),
+                    ),
+                    _paper_order(
+                        order_id="expired-open",
+                        symbol="ADA/USDT",
+                        status="open",
+                        price="1",
+                        quantity="100",
+                        created_at=(NOW - timedelta(seconds=31)).isoformat(),
+                    ),
+                ]
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    service = HedgedMakerPaperLifecycleService(settings, ExchangeFactory(settings))
+
+    budget_state = service.budget_state(opportunity, lifecycle, now=NOW + timedelta(seconds=1))
+
+    assert budget_state.active_orders == 3
+    assert budget_state.active_capital_usdt == Decimal("180.00")
+    assert budget_state.matching_active_order is True
+    assert budget_state.active_order_ids == ["matching-open", "partial-eth", "pending-future"]
+
+
 def _settings(tmp_path: Path):
     settings = load_settings(EXAMPLE_CONFIG)
     settings.hedged_maker.paper_state_path = str(tmp_path / "hedged-maker-paper-state.json")
@@ -228,6 +296,41 @@ def _opportunity(settings):
         maker_exchange="mock",
         hedge_exchange="mock_alt",
     )[0]
+
+
+def _paper_order(
+    *,
+    order_id: str,
+    symbol: str,
+    status: str,
+    price: str,
+    quantity: str,
+    created_at: str,
+    remaining_quantity: str | None = None,
+    cancel_effective_at: str | None = None,
+) -> dict[str, str]:
+    order = {
+        "order_id": order_id,
+        "opportunity_id": f"seed-{order_id}",
+        "symbol": symbol,
+        "maker_exchange": "mock",
+        "hedge_exchange": "mock_alt",
+        "maker_side": "buy",
+        "hedge_side": "sell",
+        "maker_order_type": "limit_post_only",
+        "hedge_order_type": "taker_market_preview",
+        "price": price,
+        "quantity": quantity,
+        "expected_net_profit_usdt": "0.55",
+        "status": status,
+        "created_at": created_at,
+        "updated_at": created_at,
+    }
+    if remaining_quantity is not None:
+        order["remaining_quantity"] = remaining_quantity
+    if cancel_effective_at is not None:
+        order["cancel_effective_at"] = cancel_effective_at
+    return order
 
 
 def _write_seed_order(settings, opportunity, *, price: str, quantity: str) -> None:

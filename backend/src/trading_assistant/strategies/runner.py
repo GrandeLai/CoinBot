@@ -146,8 +146,28 @@ class StrategyRunner:
             )
         selected = max(opportunities, key=lambda item: item.net_profit)
         risk_decision = RiskManager(self.settings.risk).evaluate(selected)
-        budget = self.policy.evaluate(definition.name, selected)
         lifecycle = self.policy.lifecycle_plan()
+        hedged_maker_lifecycle: HedgedMakerPaperLifecycleService | None = None
+        additional_orders = 1
+        additional_capital = selected.required_capital
+        active_orders = 0
+        active_capital = Decimal("0")
+        if definition.name == "hedged-maker":
+            hedged_maker_lifecycle = HedgedMakerPaperLifecycleService(self.settings, self.exchanges)
+            budget_state = hedged_maker_lifecycle.budget_state(selected, lifecycle)
+            active_orders = budget_state.active_orders
+            active_capital = budget_state.active_capital_usdt
+            if budget_state.matching_active_order:
+                additional_orders = 0
+                additional_capital = Decimal("0")
+        budget = self.policy.evaluate(
+            definition.name,
+            selected,
+            active_orders=active_orders,
+            active_capital_usdt=active_capital,
+            additional_orders=additional_orders,
+            additional_capital_usdt=additional_capital,
+        )
         if not risk_decision.approved or not budget.approved:
             reasons = [*risk_decision.violations, *budget.reasons]
             return StrategyCycleResult(
@@ -166,7 +186,8 @@ class StrategyRunner:
                 message=f"Strategy blocked: {', '.join(reasons)}",
             )
         if definition.name == "hedged-maker":
-            lifecycle_result = HedgedMakerPaperLifecycleService(self.settings, self.exchanges).apply(selected, lifecycle)
+            lifecycle_service = hedged_maker_lifecycle or HedgedMakerPaperLifecycleService(self.settings, self.exchanges)
+            lifecycle_result = lifecycle_service.apply(selected, lifecycle)
             execution_payload = {
                 "opportunity_id": selected.opportunity_id,
                 "status": lifecycle_result.status,

@@ -54,6 +54,21 @@ class HedgedMakerLifecycleResult:
         return to_jsonable(self)
 
 
+@dataclass(frozen=True)
+class HedgedMakerPaperBudgetState:
+    """Read-only active paper quote budget state."""
+
+    active_orders: int
+    active_capital_usdt: Decimal
+    matching_active_order: bool
+    active_order_ids: list[str]
+    state_path: str
+
+    def to_dict(self) -> dict[str, object]:
+        """Return JSON-safe representation."""
+        return to_jsonable(self)
+
+
 class HedgedMakerPaperLifecycleService:
     """Persist and advance paper maker quotes for the hedged-maker strategy."""
 
@@ -189,6 +204,29 @@ class HedgedMakerPaperLifecycleService:
         if not isinstance(orders, list):
             return {"orders": []}
         return {"orders": [dict(order) for order in orders if isinstance(order, dict)]}
+
+    def budget_state(
+        self,
+        opportunity: ArbitrageOpportunity,
+        lifecycle: OrderLifecyclePlan,
+        now: datetime | None = None,
+    ) -> HedgedMakerPaperBudgetState:
+        """Return read-only budget occupancy from active paper maker quotes."""
+        current_time = _as_utc(now or datetime.now(tz=UTC))
+        orders = _orders_from_state(self.read_state())
+        active_orders = [
+            order
+            for order in orders
+            if self._is_budget_active_order(order, lifecycle, current_time)
+        ]
+        matching_active_order = any(self._matches_opportunity(order, opportunity) for order in active_orders)
+        return HedgedMakerPaperBudgetState(
+            active_orders=len(active_orders),
+            active_capital_usdt=sum((_open_notional_usdt(order) for order in active_orders), Decimal("0")),
+            matching_active_order=matching_active_order,
+            active_order_ids=[str(order.get("order_id")) for order in active_orders],
+            state_path=str(self.path),
+        )
 
     def _create_quote_result(
         self,
@@ -404,19 +442,40 @@ class HedgedMakerPaperLifecycleService:
         return maker_price < maker_mid * (Decimal("1") - buffer_pct)
 
     def _matching_open_order(self, orders: list[dict[str, Any]], opportunity: ArbitrageOpportunity) -> dict[str, Any] | None:
-        maker_quote = _mapping(opportunity.metadata.get("maker_quote"))
-        hedge_preview = _mapping(opportunity.metadata.get("hedge_preview"))
         for order in orders:
             if not _is_open_status(order.get("status")):
                 continue
-            if order.get("symbol") != opportunity.symbol:
-                continue
-            if order.get("maker_exchange") != maker_quote.get("exchange"):
-                continue
-            if order.get("hedge_exchange") != hedge_preview.get("exchange"):
-                continue
-            return order
+            if self._matches_opportunity(order, opportunity):
+                return order
         return None
+
+    def _matches_opportunity(self, order: dict[str, Any], opportunity: ArbitrageOpportunity) -> bool:
+        maker_quote = _mapping(opportunity.metadata.get("maker_quote"))
+        hedge_preview = _mapping(opportunity.metadata.get("hedge_preview"))
+        return (
+            order.get("symbol") == opportunity.symbol
+            and order.get("maker_exchange") == maker_quote.get("exchange")
+            and order.get("hedge_exchange") == hedge_preview.get("exchange")
+        )
+
+    def _is_budget_active_order(
+        self,
+        order: dict[str, Any],
+        lifecycle: OrderLifecyclePlan,
+        now: datetime,
+    ) -> bool:
+        if not _is_open_status(order.get("status")):
+            return False
+        if order.get("status") == "cancel_pending":
+            effective_at = _parse_time(order.get("cancel_effective_at"))
+            return effective_at is None or now < effective_at
+        created_at = _parse_time(order.get("created_at"))
+        if created_at is None:
+            return True
+        if lifecycle.cancel_after_ttl and now - created_at > timedelta(seconds=lifecycle.order_ttl_seconds):
+            return False
+        stale_seconds = self.settings.hedged_maker.paper_stale_quote_seconds
+        return not (stale_seconds > 0 and now - created_at > timedelta(seconds=stale_seconds))
 
     def _needs_reprice(
         self,
@@ -467,6 +526,10 @@ def _open_quantity(order: dict[str, Any]) -> Decimal:
     if remaining is not None:
         return _decimal(remaining)
     return _decimal(order.get("quantity"))
+
+
+def _open_notional_usdt(order: dict[str, Any]) -> Decimal:
+    return _decimal(order.get("price")) * _open_quantity(order)
 
 
 def _fill_ratio_pct(*, queue_ahead_pct: Decimal, min_fill_pct: Decimal) -> Decimal:

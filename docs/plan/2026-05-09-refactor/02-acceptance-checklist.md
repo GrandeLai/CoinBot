@@ -36,6 +36,8 @@
 - [x] `docs/plan/2026-05-09-refactor/50-opportunity-density-route-discovery-report.md`
 - [x] `docs/plan/2026-05-09-refactor/75-hedged-maker-paper-evaluation-report-plan.md`
 - [x] `docs/plan/2026-05-09-refactor/76-hedged-maker-paper-evaluation-report.md`
+- [x] `docs/plan/2026-05-09-refactor/77-hedged-maker-budget-state-plan.md`
+- [x] `docs/plan/2026-05-09-refactor/78-hedged-maker-budget-state-report.md`
 - [x] `docs/plan/2026-05-09-refactor/99-final-acceptance-report.md`
 - [x] `configs/config.example.yaml`
 - [x] `.env.example`
@@ -111,6 +113,7 @@
 - [x] Hedged-maker paper runtime persists open maker quote state, applies TTL cancel/refresh, and separates realized paper PnL from expected scan edge.
 - [x] Hedged-maker paper fill-quality model covers queue position, partial fill, stale quote cancellation, cancel latency, adverse selection, and expanded hedge slippage without orders.
 - [x] Hedged-maker paper evaluation report summarizes journal/state lifecycle counts, fill quality, adverse selection, simulated PnL, and active quote state without orders.
+- [x] Hedged-maker budget evaluation includes active/projected paper quote order count and capital from lifecycle state without double-counting matching active quotes.
 - [x] Backtest validation uses completed candles, fee/slippage assumptions, walk-forward windows, and bias diagnostics without sending orders.
 - [x] Triangular route discovery reads spot instruments, keeps configured routes as priority routes, expands to accepted instrument-driven routes, and reports filtered routes with reasons without sending orders.
 - [x] Triangular multi-route scanning can use `--route-mode discovered` and records multi-level orderbook expected fill prices, submitted limit prices, fee/slippage estimates, depth consumed, and min-size adjustments.
