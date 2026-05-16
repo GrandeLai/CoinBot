@@ -29,6 +29,7 @@ from trading_assistant.risk.manager import RiskManager
 from trading_assistant.strategies.demo_validation import StrategyDemoValidationService
 from trading_assistant.strategies.evolution import StrategyEvolutionService
 from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
+from trading_assistant.strategies.advisory_ranker import StrategyAdvisoryRankerService
 from trading_assistant.strategies.guard import StrategyRuntimeGuard
 from trading_assistant.strategies.hedged_maker_demo import HedgedMakerDemoOrderManager
 from trading_assistant.strategies.hedged_maker_report import HedgedMakerPaperEvaluationReportService
@@ -411,6 +412,24 @@ class TradingAssistantApp:
         """Score strategies through the strategy platform."""
         cards = StrategyScoreService(self.settings, self.exchanges).score(strategy_name=strategy_name, symbol=symbol)
         return {"strategy_score": [card.to_dict() for card in cards]}
+
+    def strategy_advisory_rank(
+        self,
+        strategy_name: str = "all",
+        symbol: str = "BTC/USDT",
+        execution_mode: ExecutionMode | None = None,
+        limit: int = 50,
+        window: str = "24h",
+    ) -> dict[str, Any]:
+        """Return read-only deterministic advisory rankings for strategies."""
+        report = StrategyAdvisoryRankerService(self.settings, self.exchanges).rank(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            execution_mode=execution_mode,
+            limit=limit,
+            window=window,
+        )
+        return {"strategy_advisory_rank": report.to_dict()}
 
     def strategy_market_compare(self, strategy_name: str, symbol: str, target_exchange: str | None = None) -> dict[str, Any]:
         """Compare mock baseline strategy scans against a configured target exchange."""

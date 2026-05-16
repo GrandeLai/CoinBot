@@ -273,6 +273,15 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_score.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
     _add_json(strategy_score)
     strategy_score.set_defaults(handler=_handle_strategy_score)
+    strategy_advisory_rank = strategy_sub.add_parser("advisory-rank", help="Rank strategies from read-only local evidence")
+    strategy_advisory_rank.add_argument("--config", help="Path to YAML config")
+    strategy_advisory_rank.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    strategy_advisory_rank.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_advisory_rank.add_argument("--execution-mode", choices=["paper", "demo"], help="Filter evidence to one execution mode")
+    strategy_advisory_rank.add_argument("--limit", type=int, default=50, help="Maximum ranking rows and recent validation events")
+    strategy_advisory_rank.add_argument("--window", default="24h", help="Opportunity-density journal window, e.g. 24h or 7d")
+    _add_json(strategy_advisory_rank)
+    strategy_advisory_rank.set_defaults(handler=_handle_strategy_advisory_rank)
     strategy_market_compare = strategy_sub.add_parser("market-compare", help="Compare mock baseline scans with a target exchange")
     strategy_market_compare.add_argument("--config", help="Path to YAML config")
     strategy_market_compare.add_argument("--strategy", default="all", help="Strategy name or 'all'")
@@ -698,6 +707,19 @@ def _handle_strategy_position_report(args: argparse.Namespace) -> tuple[dict[str
 def _handle_strategy_score(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
     payload = _app(args).strategy_score(strategy_name=args.strategy, symbol=args.symbol)
     return payload, f"strategy_score cards={len(payload['strategy_score'])}"
+
+
+def _handle_strategy_advisory_rank(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_advisory_rank(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        execution_mode=args.execution_mode,
+        limit=args.limit,
+        window=args.window,
+    )
+    report = payload["strategy_advisory_rank"]
+    top = report["rankings"][0]["strategy_name"] if report["rankings"] else "none"
+    return payload, f"strategy_advisory_rank rankings={len(report['rankings'])} top={top}"
 
 
 def _handle_strategy_market_compare(args: argparse.Namespace) -> tuple[dict[str, Any], str]:

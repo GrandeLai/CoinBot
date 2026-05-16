@@ -131,6 +131,7 @@ uv run crypto-assistant strategy list --json
 uv run crypto-assistant strategy catalog --config ../configs/config.example.yaml --json
 uv run crypto-assistant strategy scan --config ../configs/config.example.yaml --strategy all --symbol BTC/USDT --json
 uv run crypto-assistant strategy score --config ../configs/config.example.yaml --strategy all --json
+uv run crypto-assistant strategy advisory-rank --config ../configs/config.example.yaml --strategy all --execution-mode paper --window 24h --json
 uv run crypto-assistant strategy portfolio-status --config ../configs/config.example.yaml --json
 uv run crypto-assistant strategy opportunity-report --config ../configs/config.example.yaml --window 24h --json
 uv run crypto-assistant strategy universe --config ../configs/config.example.yaml --exchange mock --json
@@ -241,7 +242,7 @@ uv run crypto-assistant strategy hedged-maker-report \
   --json
 ```
 
-`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state; `hedged-maker-demo` is the separate OKX Demo opportunity-file manager.
+`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `advisory-rank` combines scorecards, rolling validation, opportunity density, and runtime guard state into a deterministic read-only ranking; it reports `external_model_called=false`, `orders_sent=false`, `live_orders_sent=false`, and never mutates configs. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state; `hedged-maker-demo` is the separate OKX Demo opportunity-file manager.
 
 ## Strategy Families
 
@@ -498,7 +499,7 @@ uv run crypto-assistant strategy promotion-status \
 | Config/status | `status`, `config validate` |
 | Exchange/market/account | `exchange list`, `exchange ping`, `exchange sandbox-check`, `market ticker`, `market orderbook`, `market candles`, `account balance` |
 | Arbitrage | `arbitrage scan`, `arbitrage execute` |
-| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy market-compare`, `strategy portfolio-status` |
+| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
 | Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |

@@ -767,6 +767,70 @@ strategy_runtime:
     assert payload["opportunities"][0]["strategy_type"] == "smart-dca-basket"
 
 
+def test_cli_strategy_advisory_rank_is_read_only(tmp_path: Path, capsys) -> None:
+    journal_path = tmp_path / "strategy-events.jsonl"
+    journal_path.write_text(
+        json.dumps(
+            {
+                "event": "strategy_cycle",
+                "created_at": "2026-05-16T00:00:00+00:00",
+                "strategy_name": "smart-dca-basket",
+                "decision": "executed",
+                "execution_mode": "paper",
+                "opportunities_found": 1,
+                "selected_opportunity_id": "smart-dca-basket-mock-sol-usdt",
+                "risk_approved": True,
+                "risk_reasons": [],
+                "net_profit": "1.25",
+                "execution": {"status": "simulated", "dry_run": True, "orders": [], "net_profit": "1.25"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    config_path = tmp_path / "advisory-rank.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {journal_path}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "advisory-rank",
+            "--config",
+            str(config_path),
+            "--strategy",
+            "smart-dca-basket",
+            "--symbol",
+            "SOL/USDT",
+            "--execution-mode",
+            "paper",
+            "--limit",
+            "10",
+            "--window",
+            "24h",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_advisory_rank"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["model_policy"]["external_model_called"] is False
+    assert report["rankings"][0]["strategy_name"] == "smart-dca-basket"
+    assert report["rankings"][0]["recommendation"] in {"prioritize_paper_validation", "collect_more_samples"}
+
+
 def test_cli_strategy_hedged_maker_scans_and_runs_in_paper(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "hedged-maker.yaml"
     config_path.write_text(
@@ -927,6 +991,12 @@ strategy_runtime:
     opportunity_help_output = capsys.readouterr()
     assert opportunity_help_exit.value.code == 0
     assert "--window" in opportunity_help_output.out
+
+    with pytest.raises(SystemExit) as advisory_rank_help_exit:
+        main(["strategy", "advisory-rank", "--help"])
+    advisory_rank_help_output = capsys.readouterr()
+    assert advisory_rank_help_exit.value.code == 0
+    assert "--window" in advisory_rank_help_output.out
 
     with pytest.raises(SystemExit) as discover_routes_help_exit:
         main(["strategy", "discover-routes", "--help"])
