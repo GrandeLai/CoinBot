@@ -1,17 +1,54 @@
+# OS and editor metadata
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.example.json
+
+# Local secrets and environment overrides
 .env
-.env.okx.demo
-.env.okx.live
+.env.*
+!.env.example
+!.env.okx.demo.example
+!.env.okx.live.example
+*.pem
+*.key
+*.crt
+
+# Python and uv
 .venv/
+venv/
 .uv-cache/
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+
+# Node / frontend
+node_modules/
+frontend/node_modules/
+dist/
+frontend/dist/
+*.tsbuildinfo
+
+# Rust
+target/
+quant-core/target/
+
+# Runtime logs, journals, and local state
 logs/
 backend/logs/
-target/
-node_modules/
-dist/
-*.tsbuildinfo
+*.log
+*.jsonl
+*.sqlite
+*.sqlite3
+*.db
+*.duckdb
+hedged-maker-okx-opportunity.json

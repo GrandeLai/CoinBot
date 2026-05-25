@@ -58,6 +58,7 @@
       "dedupe_key": "all|paper|insufficient_samples|minimum_samples_not_met:0<1",
       "execution_mode": "paper",
       "first_seen_at": "2026-05-11T12:24:20.558080+00:00",
+      "improved_at": "2026-05-18T03:41:14.587128+00:00",
       "issue_id": "ri-b173009977c9",
       "last_context": {
         "status": "Needs More Samples"
@@ -67,7 +68,7 @@
       "reason": "minimum_samples_not_met:0<1",
       "recommendation": "Collect more local/demo samples before promotion or size decisions.",
       "severity": "warning",
-      "status": "open",
+      "status": "improved",
       "strategy_name": "all"
     },
     "cross-exchange|demo|preflight_not_profitable|demo_preflight_not_profitable": {
@@ -423,6 +424,40 @@
     }
   },
   "recent_runs": [
+    {
+      "created_at": "2026-05-18T03:41:14.587128+00:00",
+      "observed_issue_count": 0,
+      "observed_modes": [
+        "paper"
+      ],
+      "observed_strategy_modes": [
+        "all:paper",
+        "cross-exchange:paper",
+        "funding-carry-hedged:paper",
+        "futures-perp-basis:paper",
+        "hedged-maker:paper",
+        "mean-reversion-spot:paper",
+        "momentum-rotation:paper",
+        "orderbook-imbalance-scalp:paper",
+        "range-grid:paper",
+        "smart-dca-basket:paper",
+        "spot-perp-carry:paper",
+        "trend-breakout:paper",
+        "triangular-multi-route:paper",
+        "volatility-squeeze-breakout:paper"
+      ],
+      "operation": "strategy_validate_local",
+      "summary": {
+        "cycles_completed": 1,
+        "executed": 9,
+        "execution_mode": "paper",
+        "net_profit": "9.392692414338323347393313661",
+        "operation": "strategy_validate_local",
+        "run_completed": true,
+        "skipped": 4,
+        "validation_status": "Pass"
+      }
+    },
     {
       "created_at": "2026-05-14T10:04:47.905029+00:00",
       "observed_issue_count": 1,
@@ -871,34 +906,8 @@
         "skipped": 5,
         "validation_status": "Needs More Samples"
       }
-    },
-    {
-      "created_at": "2026-05-11T13:53:33.857033+00:00",
-      "observed_issue_count": 1,
-      "observed_modes": [
-        "paper"
-      ],
-      "observed_strategy_modes": [
-        "all:paper",
-        "cross-exchange:paper",
-        "funding-carry-hedged:paper",
-        "futures-perp-basis:paper",
-        "spot-perp-carry:paper",
-        "triangular-multi-route:paper"
-      ],
-      "operation": "strategy_validate_local",
-      "summary": {
-        "cycles_completed": 1,
-        "executed": 0,
-        "execution_mode": "paper",
-        "net_profit": "0",
-        "operation": "strategy_validate_local",
-        "run_completed": true,
-        "skipped": 5,
-        "validation_status": "Needs More Samples"
-      }
     }
   ],
-  "updated_at": "2026-05-14T10:04:47.905029+00:00",
+  "updated_at": "2026-05-18T03:41:14.587128+00:00",
   "version": 1
 }

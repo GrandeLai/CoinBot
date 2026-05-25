@@ -6,6 +6,7 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from trading_assistant.application import TradingAssistantApp
@@ -282,6 +283,39 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_advisory_rank.add_argument("--window", default="24h", help="Opportunity-density journal window, e.g. 24h or 7d")
     _add_json(strategy_advisory_rank)
     strategy_advisory_rank.set_defaults(handler=_handle_strategy_advisory_rank)
+    strategy_diversification_report = strategy_sub.add_parser(
+        "diversification-report",
+        help="Show read-only strategy-family concentration and validation-budget guidance",
+    )
+    strategy_diversification_report.add_argument("--config", help="Path to YAML config")
+    strategy_diversification_report.add_argument("--strategy", default="all", help="Strategy name or 'all'")
+    strategy_diversification_report.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_diversification_report.add_argument("--execution-mode", choices=["paper", "demo"], help="Filter evidence to one execution mode")
+    strategy_diversification_report.add_argument("--limit", type=int, default=50, help="Maximum advisory rows to aggregate")
+    strategy_diversification_report.add_argument("--window", default="24h", help="Opportunity-density journal window, e.g. 24h or 7d")
+    strategy_diversification_report.add_argument(
+        "--max-family-share-pct",
+        type=_non_negative_decimal_arg,
+        default=Decimal("60"),
+        help="Advisory validation-budget cap per strategy family",
+    )
+    strategy_diversification_report.add_argument(
+        "--min-queue-quality-score",
+        type=_non_negative_decimal_arg,
+        default=Decimal("0"),
+        help="Minimum validation_queue quality score; family diagnostics remain unfiltered",
+    )
+    _add_json(strategy_diversification_report)
+    strategy_diversification_report.set_defaults(handler=_handle_strategy_diversification_report)
+    strategy_directional_sleeve_status = strategy_sub.add_parser(
+        "directional-sleeve-status",
+        help="Show read-only directional sleeve promotion status",
+    )
+    strategy_directional_sleeve_status.add_argument("--config", help="Path to YAML config")
+    strategy_directional_sleeve_status.add_argument("--execution-mode", choices=["paper", "demo"], help="Filter validation evidence to one mode")
+    strategy_directional_sleeve_status.add_argument("--limit", type=int, default=50, help="Number of latest directional validation events to inspect")
+    _add_json(strategy_directional_sleeve_status)
+    strategy_directional_sleeve_status.set_defaults(handler=_handle_strategy_directional_sleeve_status)
     strategy_dex_lp_readiness = strategy_sub.add_parser("dex-lp-readiness", help="Show read-only DEX/CLMM LP readiness gate")
     strategy_dex_lp_readiness.add_argument("--config", help="Path to YAML config")
     _add_json(strategy_dex_lp_readiness)
@@ -364,6 +398,15 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_hedged_maker_report.add_argument("--limit", type=int, default=50, help="Number of latest hedged-maker paper events to include")
     _add_json(strategy_hedged_maker_report)
     strategy_hedged_maker_report.set_defaults(handler=_handle_strategy_hedged_maker_report)
+    strategy_hedged_maker_demo_candidate = strategy_sub.add_parser(
+        "hedged-maker-demo-candidate",
+        help="Build a read-only hedged-maker OKX Demo manager candidate payload",
+    )
+    strategy_hedged_maker_demo_candidate.add_argument("--config", help="Path to YAML config")
+    strategy_hedged_maker_demo_candidate.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_hedged_maker_demo_candidate.add_argument("--target-exchange", default="okx", help="Target exchange for the candidate payload")
+    _add_json(strategy_hedged_maker_demo_candidate)
+    strategy_hedged_maker_demo_candidate.set_defaults(handler=_handle_strategy_hedged_maker_demo_candidate)
     strategy_hedged_maker_demo = strategy_sub.add_parser("hedged-maker-demo", help="Run one OKX Demo hedged-maker manager step")
     strategy_hedged_maker_demo.add_argument("--config", required=True, help="Path to OKX demo YAML config")
     strategy_hedged_maker_demo.add_argument("--opportunity-file", required=True, help="Path to hedged-maker opportunity JSON file")
@@ -372,6 +415,20 @@ def build_parser() -> argparse.ArgumentParser:
     strategy_carry_basis_optimize = strategy_sub.add_parser("carry-basis-optimize", help="Show read-only carry/basis optimization diagnostics")
     strategy_carry_basis_optimize.add_argument("--config", help="Path to YAML config")
     strategy_carry_basis_optimize.add_argument("--symbol", default="BTC/USDT", help="Trading symbol, e.g. BTC/USDT")
+    strategy_carry_basis_optimize.add_argument("--symbols", help="Comma-separated symbols for read-only multi-symbol sweep")
+    strategy_carry_basis_optimize.add_argument("--target-exchange", help="Optional enabled target exchange for read-only market unlock diagnostics")
+    strategy_carry_basis_optimize.add_argument("--min-quality-score", type=_decimal_arg, help="Minimum quality score for sweep ranked cards")
+    strategy_carry_basis_optimize.add_argument("--max-symbols", type=_non_negative_int_arg, help="Maximum symbols to evaluate in one sweep")
+    strategy_carry_basis_optimize.add_argument(
+        "--request-budget-seconds",
+        type=_non_negative_decimal_arg,
+        help="Overall read-only sweep budget in seconds; 0 records budget skips without scanning",
+    )
+    strategy_carry_basis_optimize.add_argument(
+        "--per-symbol-timeout-seconds",
+        type=_non_negative_decimal_arg,
+        help="Per-symbol read-only observation timeout in seconds",
+    )
     _add_json(strategy_carry_basis_optimize)
     strategy_carry_basis_optimize.set_defaults(handler=_handle_strategy_carry_basis_optimize)
     strategy_guard_status = strategy_sub.add_parser("guard-status", help="Show stateful strategy runtime guard status")
@@ -476,6 +533,46 @@ def _add_json(parser: argparse.ArgumentParser) -> None:
 
 def _app(args: argparse.Namespace) -> TradingAssistantApp:
     return TradingAssistantApp(config_path=getattr(args, "config", None))
+
+
+def _parse_symbol_list(raw: str) -> list[str]:
+    """Return non-empty comma-separated symbols while preserving order."""
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for item in raw.split(","):
+        symbol = item.strip()
+        if not symbol or symbol in seen:
+            continue
+        symbols.append(symbol)
+        seen.add(symbol)
+    return symbols
+
+
+def _decimal_arg(raw: str) -> Decimal:
+    """Parse a CLI decimal value."""
+    try:
+        return Decimal(raw)
+    except InvalidOperation as exc:
+        raise argparse.ArgumentTypeError(f"invalid decimal value: {raw}") from exc
+
+
+def _non_negative_decimal_arg(raw: str) -> Decimal:
+    """Parse a non-negative CLI decimal value."""
+    value = _decimal_arg(raw)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"value must be non-negative: {raw}")
+    return value
+
+
+def _non_negative_int_arg(raw: str) -> int:
+    """Parse a non-negative CLI integer value."""
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid integer value: {raw}") from exc
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"value must be non-negative: {raw}")
+    return value
 
 
 def _handle_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
@@ -726,6 +823,40 @@ def _handle_strategy_advisory_rank(args: argparse.Namespace) -> tuple[dict[str, 
     return payload, f"strategy_advisory_rank rankings={len(report['rankings'])} top={top}"
 
 
+def _handle_strategy_diversification_report(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_diversification_report(
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        execution_mode=args.execution_mode,
+        limit=args.limit,
+        window=args.window,
+        max_family_share_pct=args.max_family_share_pct,
+        min_queue_quality_score=args.min_queue_quality_score,
+    )
+    report = payload["strategy_diversification_report"]
+    summary = report["summary"]
+    return payload, (
+        f"strategy_diversification_report families={summary['family_count']} "
+        f"candidate_families={summary['candidate_family_count']} "
+        f"queue={summary['validation_queue_count']} "
+        f"quality_floor={summary['min_queue_quality_score']} "
+        f"dominant={summary['dominant_family']}"
+    )
+
+
+def _handle_strategy_directional_sleeve_status(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_directional_sleeve_status(
+        execution_mode=args.execution_mode,
+        limit=args.limit,
+    )
+    report = payload["strategy_directional_sleeve_status"]
+    summary = report["summary"]
+    return payload, (
+        f"strategy_directional_sleeve_status strategies={summary['strategy_count']} "
+        f"demo_eligible={summary['demo_eligible_count']} live_supported={summary['directional_live_supported']}"
+    )
+
+
 def _handle_strategy_dex_lp_readiness(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
     payload = _app(args).strategy_dex_lp_readiness()
     report = payload["strategy_dex_lp_readiness"]
@@ -860,6 +991,19 @@ def _handle_strategy_hedged_maker_report(args: argparse.Namespace) -> tuple[dict
     )
 
 
+def _handle_strategy_hedged_maker_demo_candidate(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
+    payload = _app(args).strategy_hedged_maker_demo_candidate(
+        symbol=args.symbol,
+        target_exchange=args.target_exchange,
+    )
+    report = payload["strategy_hedged_maker_demo_candidate"]
+    return payload, (
+        f"strategy_hedged_maker_demo_candidate approved={report['approved']} "
+        f"demo_manager_compatible={report['demo_manager_compatible']} "
+        f"reasons={len(report['reasons'])}"
+    )
+
+
 def _handle_strategy_hedged_maker_demo(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
     payload = _app(args).strategy_hedged_maker_demo(opportunity_file=args.opportunity_file)
     result = payload["strategy_hedged_maker_demo"]
@@ -867,12 +1011,31 @@ def _handle_strategy_hedged_maker_demo(args: argparse.Namespace) -> tuple[dict[s
 
 
 def _handle_strategy_carry_basis_optimize(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
-    payload = _app(args).strategy_carry_basis_optimize(symbol=args.symbol)
+    symbols = _parse_symbol_list(args.symbols) if args.symbols else None
+    payload = _app(args).strategy_carry_basis_optimize(
+        symbol=args.symbol,
+        target_exchange=args.target_exchange,
+        symbols=symbols,
+        min_quality_score=args.min_quality_score,
+        max_symbols=args.max_symbols,
+        request_budget_seconds=args.request_budget_seconds,
+        per_symbol_timeout_seconds=args.per_symbol_timeout_seconds,
+    )
     report = payload["strategy_carry_basis_optimization"]
     summary = report["summary"]
+    if report.get("mode") == "sweep":
+        return payload, (
+            f"strategy_carry_basis_optimization symbols={summary['symbol_count']} "
+            f"cards={summary['card_count']} "
+            f"target_candidates={summary['target_demo_preflight_candidate_count']} "
+            f"high_quality={summary['high_quality_candidate_count']} "
+            f"skipped={summary['skipped_symbol_count']} "
+            f"timeouts={summary['timeout_symbol_count']}"
+        )
     return payload, (
         f"strategy_carry_basis_optimization blocked={summary['blocked_count']} "
-        f"demo_ready={summary['demo_ready_count']}"
+        f"demo_ready={summary['demo_ready_count']} "
+        f"target_candidates={summary['target_demo_preflight_candidate_count']}"
     )
 
 

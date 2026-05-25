@@ -11,6 +11,7 @@ from trading_assistant.config.schema import Settings
 from trading_assistant.exchanges.base import utcnow
 from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.strategies.advisory_ranker import StrategyAdvisoryRankerService
+from trading_assistant.strategies.diversification import StrategyDiversificationService
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -59,6 +60,88 @@ def test_advisory_ranker_keeps_demo_unsupported_strategy_paper_only(tmp_path: Pa
     assert row.recommendation == "paper_only"
     assert "demo_not_supported" in row.reasons
     assert report.model_policy["llm_direct_ordering_allowed"] is False
+
+
+def test_diversification_report_caps_family_validation_budget(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    _write_strategy_events(Path(settings.strategy_runtime.journal_path), "triangular-multi-route", count=2, net_profit=Decimal("0.50"))
+
+    report = StrategyDiversificationService(settings, ExchangeFactory(settings)).report(
+        strategy_name="all",
+        symbol="BTC/USDT",
+        execution_mode="paper",
+        limit=20,
+        window="24h",
+        max_family_share_pct=Decimal("60"),
+    )
+    payload = report.to_dict()
+
+    assert payload["read_only"] is True
+    assert payload["orders_sent"] is False
+    assert payload["live_orders_sent"] is False
+    assert payload["summary"]["max_family_share_pct"] == "60"
+    assert payload["summary"]["candidate_family_count"] >= 2
+    families = {row["family"]: row for row in payload["families"]}
+    assert "triangular" in families
+    assert "carry_basis" in families
+    assert all(Decimal(row["validation_budget_share_pct"]) <= Decimal("60") for row in families.values())
+    assert "family_concentration_guard" in payload["guardrails"]
+
+
+def test_diversification_report_builds_non_triangular_validation_queue(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    _write_strategy_events(Path(settings.strategy_runtime.journal_path), "triangular-multi-route", count=2, net_profit=Decimal("0.50"))
+
+    report = StrategyDiversificationService(settings, ExchangeFactory(settings)).report(
+        strategy_name="all",
+        symbol="BTC/USDT",
+        execution_mode="paper",
+        limit=20,
+        window="24h",
+        max_family_share_pct=Decimal("60"),
+    )
+    payload = report.to_dict()
+
+    queue = payload["validation_queue"]
+    assert queue
+    assert payload["summary"]["queue_policy"] == "family_budget_capped_non_triangular_first"
+    assert payload["summary"]["validation_queue_count"] == len(queue)
+    assert payload["summary"]["non_triangular_queue_count"] >= 1
+    assert queue[0]["family"] != "triangular"
+    assert queue[0]["rank"] == 1
+    assert queue[0]["next_action"] in {"validate_non_triangular_candidate", "collect_more_evidence"}
+    assert Decimal(queue[0]["quality_score"]) >= Decimal("0")
+    assert queue[0]["quality_bucket"] in {"high", "medium", "low"}
+    assert queue[0]["quality_reasons"]
+    assert "family_budget_capped_non_triangular_first" in payload["guardrails"]
+
+
+def test_diversification_report_filters_validation_queue_by_quality(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    _write_strategy_events(Path(settings.strategy_runtime.journal_path), "triangular-multi-route", count=2, net_profit=Decimal("0.50"))
+
+    report = StrategyDiversificationService(settings, ExchangeFactory(settings)).report(
+        strategy_name="all",
+        symbol="BTC/USDT",
+        execution_mode="paper",
+        limit=20,
+        window="24h",
+        max_family_share_pct=Decimal("60"),
+        min_queue_quality_score=Decimal("80"),
+    )
+    payload = report.to_dict()
+
+    queue = payload["validation_queue"]
+    assert queue
+    assert payload["summary"]["min_queue_quality_score"] == "80"
+    assert payload["summary"]["unfiltered_validation_queue_count"] > len(queue)
+    assert payload["summary"]["filtered_validation_queue_count"] > 0
+    assert all(Decimal(item["quality_score"]) >= Decimal("80") for item in queue)
+    assert {item["rank"] for item in queue} == set(range(1, len(queue) + 1))
+    assert payload["families"]
 
 
 def _write_strategy_events(path: Path, strategy_name: str, *, count: int, net_profit: Decimal) -> None:

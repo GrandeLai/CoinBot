@@ -14,6 +14,7 @@ from trading_assistant.exchanges.base import AccountSnapshot
 from trading_assistant.exchanges.factory import ExchangeFactory
 from trading_assistant.exceptions import ExchangeError
 from trading_assistant.strategies.evolution import archived_strategy_names
+from trading_assistant.strategies.hedged_maker_candidate import HedgedMakerDemoCandidateService
 from trading_assistant.strategies.models import StrategyDefinition, StrategyStats
 from trading_assistant.strategies.registry import StrategyRegistry
 from trading_assistant.strategies.retrospective import StrategyRetrospectiveService
@@ -127,7 +128,7 @@ class StrategyController:
                 )
                 continue
             opportunities = self._scan_definition(definition, symbol, exchange=exchange, route_mode=route_mode)
-            diagnostics = self._diagnose_definition(definition, symbol)
+            diagnostics = self._diagnose_definition(definition, symbol, exchange=exchange)
             reports.append(
                 StrategyScanReport(
                     strategy_name=definition.name,
@@ -150,28 +151,41 @@ class StrategyController:
         try:
             if definition.category == "directional":
                 return self.scanner.scan(definition.scanner_type, symbol=symbol, exchange=exchange or self._preferred_single_exchange())
-            if definition.scanner_type in {"triangular", "triangular-multi-route", "funding-carry-hedged"}:
+            if definition.scanner_type in {"triangular", "triangular-multi-route"}:
                 return self.scanner.scan(
                     definition.scanner_type,
                     exchange=exchange or self._preferred_single_exchange(),
                     route_mode=route_mode,
                 )
-            if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis", "range-grid", "smart-dca-basket", "hedged-maker"}:
+            if definition.scanner_type in {
+                "funding-carry-hedged",
+                "spot-perp-carry",
+                "futures-perp-basis",
+                "range-grid",
+                "smart-dca-basket",
+                "hedged-maker",
+            }:
                 return self.scanner.scan(definition.scanner_type, symbol=symbol, exchange=exchange or self._preferred_single_exchange())
             return self.scanner.scan(definition.scanner_type, symbol=symbol)
         except ExchangeError:
             return []
 
-    def _diagnose_definition(self, definition: StrategyDefinition, symbol: str) -> dict[str, Any]:
+    def _diagnose_definition(self, definition: StrategyDefinition, symbol: str, exchange: str | None = None) -> dict[str, Any]:
+        diagnostic_exchange = exchange or self._preferred_single_exchange()
         try:
             if definition.category == "directional":
-                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange())
+                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=diagnostic_exchange)
             if definition.scanner_type in {"funding-carry-hedged"}:
-                return self.scanner.diagnose(definition.scanner_type, exchange=self._preferred_single_exchange())
+                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=diagnostic_exchange)
             if definition.scanner_type in {"spot-perp-carry", "futures-perp-basis"}:
-                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange())
+                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=diagnostic_exchange)
+            if definition.scanner_type == "hedged-maker" and diagnostic_exchange == "okx":
+                return HedgedMakerDemoCandidateService(self.settings, self.exchanges).candidate(
+                    symbol=symbol,
+                    target_exchange=diagnostic_exchange,
+                ).to_dict()
             if definition.scanner_type in {"range-grid", "smart-dca-basket", "hedged-maker"}:
-                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=self._preferred_single_exchange())
+                return self.scanner.diagnose(definition.scanner_type, symbol=symbol, exchange=diagnostic_exchange)
         except ExchangeError as exc:
             return {"approved": False, "reasons": [f"diagnostic_error:{exc}"]}
         return {}

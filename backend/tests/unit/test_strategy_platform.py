@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import replace
 from decimal import Decimal
 from pathlib import Path
@@ -271,6 +272,126 @@ def test_carry_basis_optimization_reports_break_even_gaps_without_trading(tmp_pa
     assert "keep_demo_blocked_until_break_even_gap_closes" in spot.recommended_actions
     assert "arbitrage.spot_perp_min_basis_pct" in spot.suggested_config_fields
     assert "net_profit_below_minimum" in spot.reasons
+
+
+def test_carry_basis_optimization_merges_target_market_unlock_diagnostics(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.exchanges["okx"].enabled = True
+
+    report = CarryBasisOptimizationService(
+        settings,
+        ExchangeFactory(settings),
+        market_compare_factory_cls=TargetOKXFactory,
+    ).report(symbol="BTC/USDT", target_exchange="okx")
+    spot = next(card for card in report.cards if card.strategy_name == "spot-perp-carry")
+
+    assert report.target_exchange == "okx"
+    assert spot.target_exchange == "okx"
+    assert spot.target_verdict == "demo_preflight_candidate"
+    assert spot.unlock_priority == "demo_candidate"
+    assert spot.target_best_net_profit_usdt > Decimal("0")
+    assert spot.target_delta_net_profit_usdt > Decimal("0")
+    assert "target_has_positive_edge" in spot.target_reasons
+    assert report.summary["target_demo_preflight_candidate_count"] >= 1
+    assert report.summary["high_priority_unlock_count"] >= 1
+    assert report.orders_sent is False
+    assert report.live_orders_sent is False
+
+
+def test_carry_basis_optimization_sweeps_multiple_symbols_and_ranks_unlocks(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    settings.exchanges["okx"].enabled = True
+
+    sweep = CarryBasisOptimizationService(
+        settings,
+        ExchangeFactory(settings),
+        market_compare_factory_cls=TargetOKXFactory,
+    ).sweep(symbols=["BTC/USDT", "ETH/USDT"], target_exchange="okx")
+    payload = sweep.to_dict()
+
+    assert payload["mode"] == "sweep"
+    assert payload["read_only"] is True
+    assert payload["orders_sent"] is False
+    assert payload["live_orders_sent"] is False
+    assert payload["symbols"] == ["BTC/USDT", "ETH/USDT"]
+    assert payload["target_exchange"] == "okx"
+    assert len(payload["reports"]) == 2
+    assert payload["summary"]["symbol_count"] == 2
+    assert payload["summary"]["card_count"] == 6
+    assert payload["summary"]["target_demo_preflight_candidate_count"] >= 1
+    assert payload["summary"]["high_priority_unlock_count"] >= 1
+    assert payload["ranked_cards"][0]["unlock_priority"] == "demo_candidate"
+    assert Decimal(payload["ranked_cards"][0]["quality_score"]) >= Decimal("80")
+    assert payload["ranked_cards"][0]["quality_bucket"] == "high_quality"
+    assert payload["summary"]["high_quality_candidate_count"] >= 1
+    assert {card["symbol"] for card in payload["ranked_cards"]} == {"BTC/USDT", "ETH/USDT"}
+    for report in payload["reports"]:
+        assert {card["symbol"] for card in report["cards"]} == {report["symbol"]}
+
+    filtered = CarryBasisOptimizationService(
+        settings,
+        ExchangeFactory(settings),
+        market_compare_factory_cls=TargetOKXFactory,
+    ).sweep(symbols=["BTC/USDT", "ETH/USDT"], target_exchange="okx", min_quality_score=Decimal("80"))
+    filtered_payload = filtered.to_dict()
+
+    assert filtered_payload["summary"]["min_quality_score"] == "80"
+    assert filtered_payload["summary"]["filtered_out_count"] >= 1
+    assert all(Decimal(card["quality_score"]) >= Decimal("80") for card in filtered_payload["ranked_cards"])
+
+
+def test_carry_basis_optimization_sweep_respects_observation_budget(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+
+    sweep = CarryBasisOptimizationService(
+        settings,
+        ExchangeFactory(settings),
+    ).sweep(
+        symbols=["BTC/USDT", "ETH/USDT"],
+        request_budget_seconds=Decimal("0"),
+        per_symbol_timeout_seconds=Decimal("0.01"),
+    )
+    payload = sweep.to_dict()
+
+    assert payload["reports"] == []
+    assert payload["ranked_cards"] == []
+    assert payload["summary"]["requested_symbol_count"] == 2
+    assert payload["summary"]["symbol_count"] == 0
+    assert payload["summary"]["skipped_symbol_count"] == 2
+    assert payload["summary"]["request_budget_seconds"] == "0"
+    assert [observation["status"] for observation in payload["observations"]] == [
+        "skipped_request_budget",
+        "skipped_request_budget",
+    ]
+    assert all("request_budget_exhausted" in observation["reasons"] for observation in payload["observations"])
+
+
+def test_carry_basis_optimization_sweep_classifies_symbol_timeouts(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    service = CarryBasisOptimizationService(settings, ExchangeFactory(settings))
+    original_report = service.report
+
+    def slow_report(symbol: str = "BTC/USDT", target_exchange: str | None = None):  # noqa: ANN202
+        time.sleep(0.05)
+        return original_report(symbol=symbol, target_exchange=target_exchange)
+
+    service.report = slow_report  # type: ignore[method-assign]
+
+    sweep = service.sweep(
+        symbols=["BTC/USDT", "ETH/USDT"],
+        request_budget_seconds=Decimal("1"),
+        per_symbol_timeout_seconds=Decimal("0.001"),
+    )
+    payload = sweep.to_dict()
+
+    assert payload["reports"] == []
+    assert payload["summary"]["timeout_symbol_count"] == 2
+    assert [observation["status"] for observation in payload["observations"]] == ["timed_out", "timed_out"]
+    assert all("per_symbol_timeout_exceeded" in observation["reasons"] for observation in payload["observations"])
 
 
 def test_strategy_market_compare_is_read_only_and_explains_target_delta(tmp_path: Path) -> None:

@@ -26,11 +26,11 @@ class FundingCarryHedgedScanner:
         self.settings = settings
         self.exchanges = exchanges
 
-    def scan(self, exchange_name: str = "mock") -> list[ArbitrageOpportunity]:
+    def scan(self, exchange_name: str = "mock", symbol: str | None = None) -> list[ArbitrageOpportunity]:
         """Return hedged funding opportunities that pass net-profit and depth checks."""
         exchange = self.exchanges.get(exchange_name)
         opportunities: list[ArbitrageOpportunity] = []
-        for estimate in self.diagnose(exchange_name).get("candidates", []):
+        for estimate in self.diagnose(exchange_name, symbol=symbol).get("candidates", []):
             if not bool(estimate.get("approved", False)):
                 continue
             funding_symbol = str(estimate["symbol"])
@@ -87,12 +87,15 @@ class FundingCarryHedgedScanner:
             )
         return sorted(opportunities, key=lambda item: item.net_profit, reverse=True)
 
-    def diagnose(self, exchange_name: str = "mock") -> dict[str, Any]:
+    def diagnose(self, exchange_name: str = "mock", symbol: str | None = None) -> dict[str, Any]:
         """Return candidate diagnostics for all funding rates, including filtered ones."""
         exchange = self.exchanges.get(exchange_name)
         capital = self.settings.arbitrage.trade_size_usdt
         candidates: list[dict[str, Any]] = []
+        requested_symbol = _normalize_symbol(symbol) if symbol is not None else None
         for funding in exchange.get_funding_rates():
+            if requested_symbol is not None and _normalize_symbol(funding.symbol) != requested_symbol:
+                continue
             try:
                 quote = exchange.get_spot_perp_quote(funding.symbol)
                 orderbook = exchange.get_orderbook(funding.symbol)
@@ -169,8 +172,17 @@ class FundingCarryHedgedScanner:
         return {
             "strategy_type": "funding-carry-hedged",
             "exchange": exchange.name,
+            "symbol": requested_symbol,
             "candidate_count": len(candidates),
             "approved_count": sum(1 for item in candidates if item["approved"]),
             "best_candidate": max(candidates, key=lambda item: Decimal(str(item["net_profit_usdt"])), default=None),
             "candidates": sorted(candidates, key=lambda item: Decimal(str(item["net_profit_usdt"])), reverse=True),
         }
+
+
+def _normalize_symbol(symbol: str) -> str:
+    """Normalize common spot symbol spellings for funding symbol filtering."""
+    cleaned = symbol.upper().replace("-", "/")
+    if "/" not in cleaned and cleaned.endswith("USDT"):
+        return f"{cleaned[:-4]}/USDT"
+    return cleaned

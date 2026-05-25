@@ -831,6 +831,100 @@ strategy_runtime:
     assert report["rankings"][0]["recommendation"] in {"prioritize_paper_validation", "collect_more_samples"}
 
 
+def test_cli_strategy_diversification_report_is_read_only(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "diversification.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "diversification-report",
+            "--config",
+            str(config_path),
+            "--strategy",
+            "all",
+            "--symbol",
+            "BTC/USDT",
+            "--execution-mode",
+            "paper",
+            "--limit",
+            "20",
+            "--window",
+            "24h",
+            "--max-family-share-pct",
+            "60",
+            "--min-queue-quality-score",
+            "80",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_diversification_report"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["summary"]["max_family_share_pct"] == "60"
+    assert "triangular" in {row["family"] for row in report["families"]}
+    assert report["summary"]["validation_queue_count"] == len(report["validation_queue"])
+    assert report["summary"]["min_queue_quality_score"] == "80"
+    assert report["summary"]["filtered_validation_queue_count"] >= 1
+    assert report["summary"]["non_triangular_queue_count"] >= 1
+    assert all(Decimal(row["quality_score"]) >= Decimal("80") for row in report["validation_queue"])
+    assert report["validation_queue"][0]["family"] != "triangular"
+    assert "family_concentration_guard" in report["guardrails"]
+
+
+def test_cli_strategy_directional_sleeve_status_is_read_only(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "directional-sleeve.yaml"
+    config_path.write_text(
+        f"""
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "directional-sleeve-status",
+            "--config",
+            str(config_path),
+            "--execution-mode",
+            "paper",
+            "--limit",
+            "20",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_directional_sleeve_status"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["summary"]["directional_live_supported"] is False
+    assert "directional_live_trading_not_supported" in report["guardrails"]
+    assert {row["strategy_name"] for row in report["strategies"]} >= {"trend-breakout", "orderbook-imbalance-scalp"}
+
+
 def test_cli_strategy_dex_lp_readiness_is_read_only(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "dex-readiness.yaml"
     config_path.write_text(
@@ -954,6 +1048,62 @@ hedged_maker:
     assert report["summary"]["active_state_orders"] == 1
 
 
+def test_cli_strategy_hedged_maker_demo_candidate_is_read_only(tmp_path: Path, capsys) -> None:
+    config_path = tmp_path / "hedged-maker-candidate.yaml"
+    config_path.write_text(
+        f"""
+trading:
+  live_trading: false
+  dry_run: false
+  require_confirm_before_order: false
+exchanges:
+  okx:
+    enabled: true
+    sandbox: true
+    adapter: mock
+    okx_demo: true
+hedged_maker:
+  quote_spread_pct: 0.50
+  min_edge_pct: 0.01
+  quote_notional_usdt: 80
+  demo_state_path: {tmp_path / "hedged-maker-demo-state.json"}
+strategy_runtime:
+  journal_path: {tmp_path / "strategy-events.jsonl"}
+  runtime_guard_path: {tmp_path / "strategy-runtime-guard.json"}
+  retrospective_path: {tmp_path / "strategy-retrospective.md"}
+  retrospective_state_path: {tmp_path / "strategy-retrospective.state.json"}
+  evolution_state_path: {tmp_path / "strategy-evolution.state.json"}
+  evolution_report_path: {tmp_path / "strategy-evolution.md"}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "hedged-maker-demo-candidate",
+            "--config",
+            str(config_path),
+            "--symbol",
+            "BTC/USDT",
+            "--target-exchange",
+            "okx",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_hedged_maker_demo_candidate"]
+    assert report["read_only"] is True
+    assert report["orders_sent"] is False
+    assert report["live_orders_sent"] is False
+    assert report["target_exchange"] == "okx"
+    assert report["opportunity_file_payload"]["strategy_type"] == "hedged-maker"
+    assert report["opportunity_file_payload"]["metadata"]["maker_quote"]["exchange"] == "okx"
+    assert report["demo_manager_compatible"] is False
+    assert "target_exchange_adapter_is_mock" in report["reasons"]
+
+
 def test_cli_strategy_retrospective_empty_history(tmp_path: Path, capsys) -> None:
     config_path = tmp_path / "strategy.yaml"
     config_path.write_text(
@@ -999,6 +1149,12 @@ strategy_runtime:
     assert hedged_maker_demo_help_exit.value.code == 0
     assert "--opportunity-file" in hedged_maker_demo_help_output.out
 
+    with pytest.raises(SystemExit) as hedged_maker_candidate_help_exit:
+        main(["strategy", "hedged-maker-demo-candidate", "--help"])
+    hedged_maker_candidate_help_output = capsys.readouterr()
+    assert hedged_maker_candidate_help_exit.value.code == 0
+    assert "--target-exchange" in hedged_maker_candidate_help_output.out
+
     with pytest.raises(SystemExit) as operator_brief_help_exit:
         main(["strategy", "operator-brief", "--help"])
     operator_brief_help_output = capsys.readouterr()
@@ -1010,6 +1166,12 @@ strategy_runtime:
     carry_basis_help_output = capsys.readouterr()
     assert carry_basis_help_exit.value.code == 0
     assert "--symbol" in carry_basis_help_output.out
+    assert "--symbols" in carry_basis_help_output.out
+    assert "--target-exchange" in carry_basis_help_output.out
+    assert "--min-quality-score" in carry_basis_help_output.out
+    assert "--max-symbols" in carry_basis_help_output.out
+    assert "--request-budget-seconds" in carry_basis_help_output.out
+    assert "--per-symbol-timeout-seconds" in carry_basis_help_output.out
 
     with pytest.raises(SystemExit) as opportunity_help_exit:
         main(["strategy", "opportunity-report", "--help"])
@@ -1022,6 +1184,19 @@ strategy_runtime:
     advisory_rank_help_output = capsys.readouterr()
     assert advisory_rank_help_exit.value.code == 0
     assert "--window" in advisory_rank_help_output.out
+
+    with pytest.raises(SystemExit) as diversification_help_exit:
+        main(["strategy", "diversification-report", "--help"])
+    diversification_help_output = capsys.readouterr()
+    assert diversification_help_exit.value.code == 0
+    assert "--max-family-share-pct" in diversification_help_output.out
+    assert "--min-queue-quality-score" in diversification_help_output.out
+
+    with pytest.raises(SystemExit) as directional_sleeve_help_exit:
+        main(["strategy", "directional-sleeve-status", "--help"])
+    directional_sleeve_help_output = capsys.readouterr()
+    assert directional_sleeve_help_exit.value.code == 0
+    assert "--execution-mode" in directional_sleeve_help_output.out
 
     with pytest.raises(SystemExit) as dex_lp_help_exit:
         main(["strategy", "dex-lp-readiness", "--help"])
@@ -1241,6 +1416,89 @@ strategy_runtime:
         "spot-perp-carry",
         "futures-perp-basis",
     }
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "carry-basis-optimize",
+            "--config",
+            str(config_path),
+            "--symbol",
+            "BTC/USDT",
+            "--target-exchange",
+            "mock",
+            "--json",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    report = payload["strategy_carry_basis_optimization"]
+    assert report["target_exchange"] == "mock"
+    assert all("unlock_priority" in card for card in report["cards"])
+    assert "target_demo_preflight_candidate_count" in report["summary"]
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "carry-basis-optimize",
+            "--config",
+            str(config_path),
+            "--symbols",
+            "BTC/USDT,ETH/USDT",
+            "--target-exchange",
+            "mock",
+            "--min-quality-score",
+            "80",
+            "--json",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    sweep = payload["strategy_carry_basis_optimization"]
+    assert sweep["mode"] == "sweep"
+    assert sweep["read_only"] is True
+    assert sweep["orders_sent"] is False
+    assert sweep["live_orders_sent"] is False
+    assert sweep["symbols"] == ["BTC/USDT", "ETH/USDT"]
+    assert sweep["target_exchange"] == "mock"
+    assert len(sweep["reports"]) == 2
+    assert sweep["ranked_cards"]
+    assert all(Decimal(card["quality_score"]) >= Decimal("80") for card in sweep["ranked_cards"])
+    assert sweep["summary"]["symbol_count"] == 2
+    assert sweep["summary"]["total_card_count"] == 6
+    assert sweep["summary"]["min_quality_score"] == "80"
+    assert "target_demo_preflight_candidate_count" in sweep["summary"]
+
+    code, payload = _invoke(
+        [
+            "strategy",
+            "carry-basis-optimize",
+            "--config",
+            str(config_path),
+            "--symbols",
+            "BTC/USDT,ETH/USDT",
+            "--request-budget-seconds",
+            "0",
+            "--per-symbol-timeout-seconds",
+            "0.01",
+            "--json",
+        ],
+        capsys,
+    )
+
+    assert code == 0
+    sweep = payload["strategy_carry_basis_optimization"]
+    assert sweep["reports"] == []
+    assert sweep["ranked_cards"] == []
+    assert sweep["summary"]["requested_symbol_count"] == 2
+    assert sweep["summary"]["skipped_symbol_count"] == 2
+    assert sweep["summary"]["request_budget_seconds"] == "0"
+    assert [observation["status"] for observation in sweep["observations"]] == [
+        "skipped_request_budget",
+        "skipped_request_budget",
+    ]
 
 
 def test_cli_strategy_validate_demo_blocks_with_safe_default_config(capsys) -> None:

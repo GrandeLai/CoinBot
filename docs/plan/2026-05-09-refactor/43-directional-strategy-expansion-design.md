@@ -90,7 +90,7 @@ Directional strategies are long-only spot strategies. Demo execution:
 - require local validation first;
 - require risk and runtime guard approval;
 - opens only one managed spot long per strategy/symbol;
-- holds the position across invocations until take-profit, stop-loss, time-limit, or future reverse-signal exit conditions apply;
+- holds the position across invocations until take-profit, stop-loss, explicit `sell` reverse-signal, or time-limit exit conditions apply;
 - persists state to `directional.position_state_path`;
 - do not support live trading;
 - do not route through `agent execute-live`;
@@ -143,5 +143,4 @@ crypto-assistant strategy validation-report --strategy directional-all --executi
 
 ## Deferred Items
 
-- Reverse-signal exits for managed directional demo positions are still a follow-up; the implemented first lifecycle exits by take-profit, stop-loss, and time limit.
 - `orderbook-imbalance-scalp` is intentionally not demo-enabled until the slower directional strategies build enough validation evidence.

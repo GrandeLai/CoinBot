@@ -230,6 +230,5 @@ Verified by tests:
 
 ## Deferred / Follow-Up
 
-- Reverse-signal managed exits are still a follow-up; current managed exits use take-profit, stop-loss, and time-limit triggers.
 - Live support is intentionally not implemented.
 - `orderbook-imbalance-scalp` remains demo-disabled until the slower directional set produces enough stable validation evidence.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 from time import sleep
 from typing import Any
@@ -31,7 +32,10 @@ from trading_assistant.strategies.evolution import StrategyEvolutionService
 from trading_assistant.strategies.carry_basis_optimizer import CarryBasisOptimizationService
 from trading_assistant.strategies.advisory_ranker import StrategyAdvisoryRankerService
 from trading_assistant.strategies.dex_readiness import DexLpReadinessService
+from trading_assistant.strategies.diversification import StrategyDiversificationService
+from trading_assistant.strategies.directional_sleeve import DirectionalSleeveStatusService
 from trading_assistant.strategies.guard import StrategyRuntimeGuard
+from trading_assistant.strategies.hedged_maker_candidate import HedgedMakerDemoCandidateService
 from trading_assistant.strategies.hedged_maker_demo import HedgedMakerDemoOrderManager
 from trading_assistant.strategies.hedged_maker_report import HedgedMakerPaperEvaluationReportService
 from trading_assistant.strategies.market_compare import StrategyMarketComparisonService
@@ -432,6 +436,40 @@ class TradingAssistantApp:
         )
         return {"strategy_advisory_rank": report.to_dict()}
 
+    def strategy_diversification_report(
+        self,
+        strategy_name: str = "all",
+        symbol: str = "BTC/USDT",
+        execution_mode: ExecutionMode | None = None,
+        limit: int = 50,
+        window: str = "24h",
+        max_family_share_pct: Decimal = Decimal("60"),
+        min_queue_quality_score: Decimal = Decimal("0"),
+    ) -> dict[str, Any]:
+        """Return read-only strategy-family diversification diagnostics."""
+        report = StrategyDiversificationService(self.settings, self.exchanges).report(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            execution_mode=execution_mode,
+            limit=limit,
+            window=window,
+            max_family_share_pct=max_family_share_pct,
+            min_queue_quality_score=min_queue_quality_score,
+        )
+        return {"strategy_diversification_report": report.to_dict()}
+
+    def strategy_directional_sleeve_status(
+        self,
+        execution_mode: ExecutionMode | None = None,
+        limit: int = 50,
+    ) -> dict[str, Any]:
+        """Return read-only directional sleeve promotion status."""
+        report = DirectionalSleeveStatusService(self.settings).status(
+            execution_mode=execution_mode,
+            limit=limit,
+        )
+        return {"strategy_directional_sleeve_status": report.to_dict()}
+
     def strategy_dex_lp_readiness(self) -> dict[str, Any]:
         """Return read-only DEX/CLMM LP prerequisite status."""
         return {"strategy_dex_lp_readiness": DexLpReadinessService(self.settings).report().to_dict()}
@@ -572,6 +610,14 @@ class TradingAssistantApp:
         report = HedgedMakerPaperEvaluationReportService(self.settings).report(limit=limit)
         return {"strategy_hedged_maker_report": report.to_dict()}
 
+    def strategy_hedged_maker_demo_candidate(self, symbol: str = "BTC/USDT", target_exchange: str = "okx") -> dict[str, Any]:
+        """Return a read-only hedged-maker OKX Demo candidate payload."""
+        report = HedgedMakerDemoCandidateService(self.settings, self.exchanges).candidate(
+            symbol=symbol,
+            target_exchange=target_exchange,
+        )
+        return {"strategy_hedged_maker_demo_candidate": report.to_dict()}
+
     def strategy_hedged_maker_demo(self, opportunity_file: str | Path) -> dict[str, Any]:
         """Run one OKX Demo Trading hedged-maker manager step from an opportunity file."""
         opportunity = load_opportunity_file(opportunity_file)
@@ -592,9 +638,29 @@ class TradingAssistantApp:
         )
         return {"strategy_operator_brief": brief.to_dict()}
 
-    def strategy_carry_basis_optimize(self, symbol: str = "BTC/USDT") -> dict[str, Any]:
+    def strategy_carry_basis_optimize(
+        self,
+        symbol: str = "BTC/USDT",
+        target_exchange: str | None = None,
+        symbols: list[str] | None = None,
+        min_quality_score: Decimal | None = None,
+        max_symbols: int | None = None,
+        request_budget_seconds: Decimal | None = None,
+        per_symbol_timeout_seconds: Decimal | None = None,
+    ) -> dict[str, Any]:
         """Return read-only carry/basis optimization diagnostics."""
-        report = CarryBasisOptimizationService(self.settings, self.exchanges).report(symbol=symbol)
+        service = CarryBasisOptimizationService(self.settings, self.exchanges)
+        if symbols is not None:
+            sweep = service.sweep(
+                symbols=symbols,
+                target_exchange=target_exchange,
+                min_quality_score=min_quality_score,
+                max_symbols=max_symbols,
+                request_budget_seconds=request_budget_seconds,
+                per_symbol_timeout_seconds=per_symbol_timeout_seconds,
+            )
+            return {"strategy_carry_basis_optimization": sweep.to_dict()}
+        report = service.report(symbol=symbol, target_exchange=target_exchange)
         return {"strategy_carry_basis_optimization": report.to_dict()}
 
     def strategy_guard_status(self, strategy_name: str = "all", execution_mode: ExecutionMode | None = None) -> dict[str, Any]:

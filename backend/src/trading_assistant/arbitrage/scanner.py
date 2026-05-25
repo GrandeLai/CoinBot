@@ -54,7 +54,10 @@ class ArbitrageScanner:
             case "funding-rate":
                 return FundingRateScanner(self.settings, self.exchanges).scan()
             case "funding-carry-hedged":
-                return FundingCarryHedgedScanner(self.settings, self.exchanges).scan(exchange or "mock")
+                return FundingCarryHedgedScanner(self.settings, self.exchanges).scan(
+                    exchange or "mock",
+                    symbol=symbol or self.settings.arbitrage.symbols[0],
+                )
             case "spot-perp":
                 return SpotPerpScanner(self.settings, self.exchanges).scan(symbol or self.settings.arbitrage.symbols[0])
             case "spot-perp-carry":
@@ -84,7 +87,10 @@ class ArbitrageScanner:
             return diagnostics
         match strategy_type:
             case "funding-carry-hedged":
-                return FundingCarryHedgedScanner(self.settings, self.exchanges).diagnose(exchange or "mock")
+                return FundingCarryHedgedScanner(self.settings, self.exchanges).diagnose(
+                    exchange or "mock",
+                    symbol=symbol or self.settings.arbitrage.symbols[0],
+                )
             case "spot-perp-carry":
                 return SpotPerpCarryScanner(self.settings, self.exchanges).diagnose(symbol or self.settings.arbitrage.symbols[0], exchange or "mock")
             case "futures-perp-basis":

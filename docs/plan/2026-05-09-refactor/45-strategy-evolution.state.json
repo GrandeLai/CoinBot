@@ -1,56 +1,348 @@
 {
   "market_regime": {
-    "sample_count": 16,
+    "sample_count": 50,
     "source": "journal",
     "strategy_tags": {
-      "triangular-multi-route": "unknown"
+      "cross-exchange": "unknown",
+      "funding-carry-hedged": "unknown",
+      "futures-perp-basis": "unknown",
+      "hedged-maker": "unknown",
+      "mean-reversion-spot": "unknown",
+      "momentum-rotation": "trend_up",
+      "orderbook-imbalance-scalp": "unknown",
+      "range-grid": "unknown",
+      "smart-dca-basket": "unknown",
+      "spot-perp-carry": "unknown",
+      "trend-breakout": "trend_up",
+      "triangular-multi-route": "unknown",
+      "volatility-squeeze-breakout": "unknown"
     },
     "tag": "unknown",
     "tag_counts": {
-      "unknown": 16
+      "trend_up": 7,
+      "unknown": 43
     },
     "volatility": "unknown"
   },
-  "parameter_candidates": [],
+  "parameter_candidates": [
+    {
+      "candidate_id": "triangular-multi-route-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.min_route_depth_usdt": "increase_by_20_percent",
+        "arbitrage.slippage_pct": "stress_test_plus_0.00005"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=14.58885822835432913417316508, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "triangular-multi-route"
+    },
+    {
+      "candidate_id": "momentum-rotation-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "directional.demo_max_order_value_usdt": "keep_current_or_lower",
+        "directional.max_backtest_drawdown_pct": "reduce_by_1",
+        "directional.min_profit_factor": "increase_by_0.05"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=3, win_rate=100.00, net_profit=8.880000, reasons=minimum_samples_not_met:3<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "momentum-rotation"
+    },
+    {
+      "candidate_id": "trend-breakout-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "directional.demo_max_order_value_usdt": "keep_current_or_lower",
+        "directional.max_backtest_drawdown_pct": "reduce_by_1",
+        "directional.min_profit_factor": "increase_by_0.05"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=4.699844, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "trend-breakout"
+    },
+    {
+      "candidate_id": "smart-dca-basket-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.min_net_profit_pct": "increase_by_0.05",
+        "arbitrage.trade_size_usdt": "reduce_by_50_percent_for_probe"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=1, win_rate=100.00, net_profit=4.138548439606553413017625649, reasons=minimum_samples_not_met:1<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "smart-dca-basket"
+    },
+    {
+      "candidate_id": "spot-perp-carry-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.basis_holding_hours": "reduce_by_25_percent",
+        "arbitrage.spot_perp_min_basis_pct": "increase_by_0.02"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=1.519648070385922815436912617, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "spot-perp-carry"
+    },
+    {
+      "candidate_id": "funding-carry-hedged-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.funding_max_basis_hedge_cost_pct": "reduce_by_20_percent",
+        "arbitrage.funding_min_annualized_pct": "increase_by_5"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=1.34000, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "funding-carry-hedged"
+    },
+    {
+      "candidate_id": "futures-perp-basis-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.futures_basis_min_basis_pct": "increase_by_0.02",
+        "arbitrage.futures_basis_min_days_to_expiry": "increase_by_1"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=1.272437810945273631840796020, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "futures-perp-basis"
+    },
+    {
+      "candidate_id": "cross-exchange-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.min_net_profit_pct": "increase_by_0.05",
+        "arbitrage.trade_size_usdt": "reduce_by_50_percent_for_probe"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=4, win_rate=100.00, net_profit=1.139568086382723455308938052, reasons=minimum_samples_not_met:4<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "cross-exchange"
+    },
+    {
+      "candidate_id": "range-grid-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.min_net_profit_pct": "increase_by_0.05",
+        "arbitrage.trade_size_usdt": "reduce_by_50_percent_for_probe"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=1, win_rate=100.00, net_profit=0.2945929674008451713867240444, reasons=minimum_samples_not_met:1<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "range-grid"
+    },
+    {
+      "candidate_id": "hedged-maker-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "arbitrage.min_net_profit_pct": "increase_by_0.05",
+        "arbitrage.trade_size_usdt": "reduce_by_50_percent_for_probe"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=1, win_rate=0.00, net_profit=0, reasons=minimum_samples_not_met:1<5.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "hedged-maker"
+    },
+    {
+      "candidate_id": "mean-reversion-spot-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "directional.demo_max_order_value_usdt": "keep_current_or_lower",
+        "directional.max_backtest_drawdown_pct": "reduce_by_1",
+        "directional.min_profit_factor": "increase_by_0.05"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=0, win_rate=0, net_profit=0, reasons=no_simulated_samples.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "mean-reversion-spot"
+    },
+    {
+      "candidate_id": "orderbook-imbalance-scalp-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "directional.demo_max_order_value_usdt": "keep_current_or_lower",
+        "directional.max_backtest_drawdown_pct": "reduce_by_1",
+        "directional.min_profit_factor": "increase_by_0.05"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=0, win_rate=0, net_profit=0, reasons=no_simulated_samples.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "orderbook-imbalance-scalp"
+    },
+    {
+      "candidate_id": "volatility-squeeze-breakout-watchlist-candidate-v1",
+      "parameter_overrides": {
+        "directional.demo_max_order_value_usdt": "keep_current_or_lower",
+        "directional.max_backtest_drawdown_pct": "reduce_by_1",
+        "directional.min_profit_factor": "increase_by_0.05"
+      },
+      "rationale": "Generated from watchlist state under market_regime=unknown; recent samples=0, win_rate=0, net_profit=0, reasons=no_simulated_samples.",
+      "safety_constraints": [
+        "Do not edit live config automatically.",
+        "Do not lower live or demo safety gates to make the candidate pass.",
+        "Do not send OKX demo orders unless local validation passes."
+      ],
+      "simulation_plan": [
+        "Apply overrides only in an isolated simulated config copy.",
+        "Run local paper validation before any OKX demo revival window.",
+        "Compare validation-report expected PnL, cash-flow PnL, drawdown, receipts, and residual inventory."
+      ],
+      "source_status": "watchlist",
+      "strategy_name": "volatility-squeeze-breakout"
+    }
+  ],
   "strategies": {
     "cross-exchange": {
-      "action": "promote",
+      "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "3.418704259148170365926814156",
+      "net_profit_usdt": "1.139568086382723455308938052",
       "reason_codes": [
-        "simulated_profitability_passed"
+        "minimum_samples_not_met:4<5"
       ],
-      "samples": 12,
-      "status": "active",
+      "samples": 4,
+      "status": "watchlist",
       "strategy_name": "cross-exchange",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "funding-carry-hedged": {
-      "action": "promote",
+      "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "4.35500",
+      "net_profit_usdt": "1.34000",
       "reason_codes": [
-        "simulated_profitability_passed"
+        "minimum_samples_not_met:4<5"
       ],
-      "samples": 13,
-      "status": "active",
+      "samples": 4,
+      "status": "watchlist",
       "strategy_name": "funding-carry-hedged",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "futures-perp-basis": {
-      "action": "promote",
+      "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "4.135422885572139303482587065",
+      "net_profit_usdt": "1.272437810945273631840796020",
       "reason_codes": [
-        "simulated_profitability_passed"
+        "minimum_samples_not_met:4<5"
       ],
-      "samples": 13,
-      "status": "active",
+      "samples": 4,
+      "status": "watchlist",
       "strategy_name": "futures-perp-basis",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
+    },
+    "hedged-maker": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "0",
+      "reason_codes": [
+        "minimum_samples_not_met:1<5"
+      ],
+      "samples": 1,
+      "status": "watchlist",
+      "strategy_name": "hedged-maker",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
+      "win_rate_pct": "0.00"
     },
     "mean-reversion-spot": {
       "action": "keep",
@@ -62,20 +354,20 @@
       "samples": 0,
       "status": "watchlist",
       "strategy_name": "mean-reversion-spot",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "0"
     },
     "momentum-rotation": {
       "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "2.960000",
+      "net_profit_usdt": "8.880000",
       "reason_codes": [
-        "minimum_samples_not_met:1<5"
+        "minimum_samples_not_met:3<5"
       ],
-      "samples": 1,
+      "samples": 3,
       "status": "watchlist",
       "strategy_name": "momentum-rotation",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "orderbook-imbalance-scalp": {
@@ -88,46 +380,72 @@
       "samples": 0,
       "status": "watchlist",
       "strategy_name": "orderbook-imbalance-scalp",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "0"
     },
-    "spot-perp-carry": {
-      "action": "promote",
+    "range-grid": {
+      "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "4.938856228754249150169966003",
+      "net_profit_usdt": "0.2945929674008451713867240444",
       "reason_codes": [
-        "simulated_profitability_passed"
+        "minimum_samples_not_met:1<5"
       ],
-      "samples": 13,
-      "status": "active",
+      "samples": 1,
+      "status": "watchlist",
+      "strategy_name": "range-grid",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "smart-dca-basket": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "4.138548439606553413017625649",
+      "reason_codes": [
+        "minimum_samples_not_met:1<5"
+      ],
+      "samples": 1,
+      "status": "watchlist",
+      "strategy_name": "smart-dca-basket",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
+      "win_rate_pct": "100.00"
+    },
+    "spot-perp-carry": {
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "1.519648070385922815436912617",
+      "reason_codes": [
+        "minimum_samples_not_met:4<5"
+      ],
+      "samples": 4,
+      "status": "watchlist",
       "strategy_name": "spot-perp-carry",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "trend-breakout": {
       "action": "keep",
       "evidence_mode": "paper",
-      "net_profit_usdt": "2.349922",
+      "net_profit_usdt": "4.699844",
       "reason_codes": [
-        "minimum_samples_not_met:2<5"
+        "minimum_samples_not_met:4<5"
       ],
-      "samples": 2,
+      "samples": 4,
       "status": "watchlist",
       "strategy_name": "trend-breakout",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "triangular-multi-route": {
-      "action": "promote",
-      "evidence_mode": "demo",
-      "net_profit_usdt": "2.832021",
+      "action": "keep",
+      "evidence_mode": "paper",
+      "net_profit_usdt": "14.58885822835432913417316508",
       "reason_codes": [
-        "simulated_profitability_passed"
+        "minimum_samples_not_met:4<5"
       ],
-      "samples": 13,
-      "status": "champion",
+      "samples": 4,
+      "status": "watchlist",
       "strategy_name": "triangular-multi-route",
-      "updated_at": "2026-05-14T10:04:47.914893+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "100.00"
     },
     "volatility-squeeze-breakout": {
@@ -140,10 +458,10 @@
       "samples": 0,
       "status": "watchlist",
       "strategy_name": "volatility-squeeze-breakout",
-      "updated_at": "2026-05-12T06:26:30.957516+00:00",
+      "updated_at": "2026-05-18T03:41:14.614832+00:00",
       "win_rate_pct": "0"
     }
   },
-  "updated_at": "2026-05-14T10:04:47.914893+00:00",
+  "updated_at": "2026-05-18T03:41:14.614832+00:00",
   "version": 1
 }

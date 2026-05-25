@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -12,8 +13,9 @@ from trading_assistant.directional.indicators import atr, bollinger_bands, donch
 from trading_assistant.directional.models import DirectionalPositionLifecycle, DirectionalSignal
 from trading_assistant.directional.scanner import DirectionalOpportunityScanner
 from trading_assistant.directional.strategies import TrendBreakoutStrategy
-from trading_assistant.exchanges.base import Candle
+from trading_assistant.exchanges.base import Candle, utcnow
 from trading_assistant.exchanges.factory import ExchangeFactory
+from trading_assistant.strategies.directional_sleeve import DirectionalSleeveStatusService
 from trading_assistant.strategies.registry import StrategyRegistry
 
 
@@ -121,6 +123,27 @@ def test_directional_scanner_wraps_buy_signal_as_opportunity(tmp_path: Path) -> 
     assert Decimal(str(best.metadata["backtest"]["profit_factor"])) >= Decimal("1.10")
 
 
+def test_directional_sleeve_status_reports_promotion_rules(tmp_path: Path) -> None:
+    settings = load_settings(EXAMPLE_CONFIG)
+    _use_temp_runtime_paths(settings, tmp_path)
+    _write_directional_events(Path(settings.strategy_runtime.journal_path), "trend-breakout", count=2, net_profit=Decimal("0.40"))
+
+    report = DirectionalSleeveStatusService(settings).status(execution_mode="paper", limit=20)
+    payload = report.to_dict()
+
+    assert payload["read_only"] is True
+    assert payload["orders_sent"] is False
+    assert payload["live_orders_sent"] is False
+    assert payload["summary"]["directional_live_supported"] is False
+    assert payload["summary"]["demo_max_order_value_usdt"] == "20"
+    trend = next(row for row in payload["strategies"] if row["strategy_name"] == "trend-breakout")
+    assert trend["stage"] == "demo_eligible_after_standard_gates"
+    assert trend["validation_executed"] == 2
+    scalp = next(row for row in payload["strategies"] if row["strategy_name"] == "orderbook-imbalance-scalp")
+    assert scalp["stage"] == "paper_only"
+    assert "directional_live_trading_not_supported" in payload["guardrails"]
+
+
 def test_directional_backtest_reports_fee_adjusted_metrics() -> None:
     candles = _trend_candles(count=120)
 
@@ -131,6 +154,51 @@ def test_directional_backtest_reports_fee_adjusted_metrics() -> None:
     assert result.profit_factor >= Decimal("1.10")
     assert result.max_drawdown_pct <= Decimal("5")
     assert result.account_equity_attribution["strategy_pnl_usdt"] == result.net_pnl_usdt
+
+
+def _use_temp_runtime_paths(settings, tmp_path: Path) -> None:  # noqa: ANN001
+    settings.strategy_runtime.journal_path = str(tmp_path / "strategy-events.jsonl")
+    settings.strategy_runtime.runtime_guard_path = str(tmp_path / "strategy-runtime-guard.json")
+    settings.strategy_runtime.retrospective_path = str(tmp_path / "strategy-retrospective.md")
+    settings.strategy_runtime.retrospective_state_path = str(tmp_path / "strategy-retrospective.state.json")
+    settings.strategy_runtime.evolution_state_path = str(tmp_path / "strategy-evolution.state.json")
+    settings.strategy_runtime.evolution_report_path = str(tmp_path / "strategy-evolution.md")
+
+
+def _write_directional_events(path: Path, strategy_name: str, *, count: int, net_profit: Decimal) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for index in range(count):
+        rows.append(
+            json.dumps(
+                {
+                    "event": "strategy_cycle",
+                    "created_at": utcnow().isoformat(),
+                    "cycle": index + 1,
+                    "strategy_name": strategy_name,
+                    "decision": "executed",
+                    "execution_mode": "paper",
+                    "opportunities_found": 1,
+                    "selected_opportunity_id": f"directional-{strategy_name}-{index}",
+                    "risk_approved": True,
+                    "risk_reasons": [],
+                    "net_profit": str(net_profit),
+                    "execution": {
+                        "status": "simulated",
+                        "strategy_family": "directional",
+                        "dry_run": True,
+                        "orders": [],
+                        "net_profit": str(net_profit),
+                        "pnl_validation": {
+                            "cash_flow_net_pnl_usdt": str(net_profit),
+                            "within_tolerance": True,
+                            "residual_inventory_within_tolerance": True,
+                        },
+                    },
+                }
+            )
+        )
+    path.write_text("\n".join(rows), encoding="utf-8")
 
 
 def _trend_candles(count: int) -> list[Candle]:

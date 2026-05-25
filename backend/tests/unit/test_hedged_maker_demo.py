@@ -12,8 +12,13 @@ import pytest
 
 from trading_assistant.arbitrage.opportunity import ArbitrageOpportunity
 from trading_assistant.config.schema import AgentTradingConfig, ExchangeConfig, HedgedMakerConfig, Settings, TradingConfig
+from trading_assistant.exchanges.base import Exchange
+from trading_assistant.exchanges.factory import ExchangeFactory
+from trading_assistant.exchanges.mock import MockExchange
 from trading_assistant.exceptions import SafetyError
+from trading_assistant.strategies.hedged_maker_candidate import HedgedMakerDemoCandidateService
 from trading_assistant.strategies.hedged_maker_demo import HedgedMakerDemoOrderManager
+from trading_assistant.strategies.platform import StrategyController
 
 
 def test_hedged_maker_demo_manager_blocks_default_dry_run_settings(tmp_path: Path) -> None:
@@ -144,6 +149,78 @@ def test_hedged_maker_demo_manager_replaces_stale_open_quote(
     assert state["orders"][1]["status"] == "open"
 
 
+def test_hedged_maker_demo_candidate_builds_okx_opportunity_payload(tmp_path: Path) -> None:
+    settings = _demo_candidate_settings(tmp_path)
+
+    report = HedgedMakerDemoCandidateService(settings, OkxMockFactory(settings)).candidate(
+        symbol="BTC/USDT",
+        target_exchange="okx",
+    )
+    payload = report.to_dict()
+
+    assert payload["read_only"] is True
+    assert payload["orders_sent"] is False
+    assert payload["live_orders_sent"] is False
+    assert payload["approved"] is True
+    assert payload["demo_manager_compatible"] is True
+    opportunity = payload["opportunity_file_payload"]
+    assert opportunity["strategy_type"] == "hedged-maker"
+    assert opportunity["buy_exchange"] == "okx"
+    assert opportunity["sell_exchange"] == "okx"
+    assert opportunity["metadata"]["maker_quote"]["exchange"] == "okx"
+    assert opportunity["metadata"]["hedge_preview"]["exchange"] == "okx"
+    assert opportunity["metadata"]["execution_quality"]["spread_persistence"]["passed"] is True
+    assert opportunity["metadata"]["execution_quality"]["depth_fill"]["buy"]["complete"] is True
+    assert opportunity["metadata"]["execution_quality"]["depth_fill"]["sell"]["complete"] is True
+    assert "submit_with_strategy_hedged_maker_demo_after_demo_gate" in payload["next_actions"]
+
+
+def test_strategy_scan_uses_okx_hedged_maker_candidate_diagnostics(tmp_path: Path) -> None:
+    settings = _demo_candidate_settings(tmp_path)
+    settings.exchanges["mock_alt"] = ExchangeConfig(enabled=False, sandbox=True, adapter="mock")
+    settings.hedged_maker.hedge_exchange = "mock_alt"
+
+    report = StrategyController(settings, OkxMockFactory(settings)).scan(
+        strategy_name="hedged-maker",
+        symbol="BTC/USDT",
+    )[0]
+
+    assert report.opportunities == []
+    assert report.diagnostics["read_only"] is True
+    assert report.diagnostics["demo_manager_compatible"] is True
+    assert "diagnostic_error:Exchange is disabled: mock_alt" not in report.diagnostics["reasons"]
+    opportunity = report.diagnostics["opportunity_file_payload"]
+    assert opportunity["buy_exchange"] == "okx"
+    assert opportunity["sell_exchange"] == "okx"
+    assert opportunity["metadata"]["maker_quote"]["exchange"] == "okx"
+    assert opportunity["metadata"]["hedge_preview"]["exchange"] == "okx"
+
+
+def test_strategy_scan_honors_explicit_okx_exchange_for_hedged_maker_diagnostics(tmp_path: Path) -> None:
+    settings = _demo_candidate_settings(tmp_path)
+    okx_config = settings.exchanges["okx"]
+    settings.exchanges = {
+        "mock": ExchangeConfig(enabled=True, sandbox=True, adapter="mock"),
+        "okx": okx_config,
+        "mock_alt": ExchangeConfig(enabled=False, sandbox=True, adapter="mock"),
+    }
+    settings.hedged_maker.hedge_exchange = "mock_alt"
+
+    report = StrategyController(settings, OkxMockFactory(settings)).scan(
+        strategy_name="hedged-maker",
+        symbol="BTC/USDT",
+        exchange="okx",
+    )[0]
+
+    assert report.opportunities == []
+    assert report.diagnostics["target_exchange"] == "okx"
+    assert report.diagnostics["demo_manager_compatible"] is True
+    assert "diagnostic_error:Exchange is disabled: mock_alt" not in report.diagnostics["reasons"]
+    opportunity = report.diagnostics["opportunity_file_payload"]
+    assert opportunity["buy_exchange"] == "okx"
+    assert opportunity["sell_exchange"] == "okx"
+
+
 def _demo_settings(tmp_path: Path) -> Settings:
     return Settings(
         trading=TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False),
@@ -172,6 +249,40 @@ def _demo_settings(tmp_path: Path) -> Settings:
         hedged_maker=HedgedMakerConfig(
             demo_state_path=str(tmp_path / "hm-demo-state.json"),
             quote_notional_usdt=Decimal("80"),
+        ),
+    )
+
+
+def _demo_candidate_settings(tmp_path: Path) -> Settings:
+    return Settings(
+        trading=TradingConfig(live_trading=False, dry_run=False, require_confirm_before_order=False),
+        exchanges={
+            "okx": ExchangeConfig(
+                enabled=True,
+                sandbox=True,
+                adapter="okx",
+                okx_demo=True,
+                api_key_env="COINBOT_OKX_API_KEY",
+                api_secret_env="COINBOT_OKX_API_SECRET",
+                passphrase_env="COINBOT_OKX_PASSPHRASE",
+            )
+        },
+        agent_trading=AgentTradingConfig(
+            enabled=True,
+            allow_demo_orders=True,
+            allow_live_orders=False,
+            strategy_allowlist=["hedged-maker"],
+            allowed_exchanges=["okx"],
+            max_autonomous_order_value_usdt=Decimal("100"),
+            max_autonomous_orders_per_day=5,
+            audit_log_path=str(tmp_path / "agent-demo-audit.jsonl"),
+            policy_id="test-demo-policy",
+        ),
+        hedged_maker=HedgedMakerConfig(
+            quote_spread_pct=Decimal("0.50"),
+            min_edge_pct=Decimal("0.01"),
+            quote_notional_usdt=Decimal("80"),
+            demo_state_path=str(tmp_path / "hm-demo-state.json"),
         ),
     )
 
@@ -248,6 +359,15 @@ def _detail(order_id: str, *, state: str, side: str, fill_size: str) -> dict[str
         "cTime": "1",
         "uTime": "2",
     }
+
+
+class OkxMockFactory(ExchangeFactory):
+    """Exchange factory that avoids network while preserving OKX config semantics."""
+
+    def get(self, name: str) -> Exchange:
+        if name == "okx":
+            return MockExchange(name="mock")
+        return super().get(name)
 
 
 class FakeHedgedMakerDemoProvider:

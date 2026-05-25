@@ -241,9 +241,35 @@ uv run crypto-assistant strategy hedged-maker-report \
   --config ../configs/config.example.yaml \
   --limit 50 \
   --json
+
+uv run crypto-assistant strategy diversification-report \
+  --config ../configs/config.example.yaml \
+  --strategy all \
+  --execution-mode paper \
+  --max-family-share-pct 60 \
+  --min-queue-quality-score 80 \
+  --json
+
+uv run crypto-assistant strategy directional-sleeve-status \
+  --config ../configs/config.example.yaml \
+  --execution-mode paper \
+  --limit 50 \
+  --json
 ```
 
-`validation-report` gives aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. `advisory-rank` combines scorecards, rolling validation, opportunity density, and runtime guard state into a deterministic read-only ranking; it reports `external_model_called=false`, `orders_sent=false`, `live_orders_sent=false`, and never mutates configs. `operator-brief` is the no-order checkpoint before the next demo/promotion step. `pnl-attribution` separates strategy cash-flow PnL from account-equity movement so unrelated inventory does not get mistaken for strategy performance. `hedged-maker-report` is a paper-only view of maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and current paper quote state; `hedged-maker-demo` is the separate OKX Demo opportunity-file manager.
+All rolling evidence commands are read-only and should report `orders_sent=false` and `live_orders_sent=false`.
+
+| Command | Purpose |
+| --- | --- |
+| `validation-report` | Aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. |
+| `advisory-rank` | Deterministic ranking from scorecards, rolling validation, opportunity density, and runtime guard state; it does not call external models or mutate configs. |
+| `diversification-report` | Strategy-family concentration, validation PnL, advisory validation-budget caps, and a family-balanced `validation_queue` with deterministic quality scores. |
+| `directional-sleeve-status` | Long-only directional promotion stages, size caps, guard cooldowns, and the permanent `directional_live_supported=false` boundary. |
+| `operator-brief` | No-order checkpoint before another demo or promotion step. |
+| `pnl-attribution` | Separates strategy cash-flow PnL from account-equity movement so unrelated inventory is not treated as strategy performance. |
+| `hedged-maker-report` | Paper-only maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and active quote state. |
+
+`diversification-report --min-queue-quality-score` filters only the queue while preserving family diagnostics. `hedged-maker-demo` remains a separate OKX Demo opportunity-file manager, not part of the generic `strategy run --strategy hedged-maker --execution-mode demo` path.
 
 ## Strategy Families
 
@@ -266,6 +292,32 @@ uv run crypto-assistant strategy carry-basis-optimize \
   --symbol BTC/USDT \
   --json
 ```
+
+To compare the same carry/basis candidates against a configured read-only target exchange before any demo preflight:
+
+```bash
+uv run crypto-assistant strategy carry-basis-optimize \
+  --config ../configs/okx.demo.example.yaml \
+  --symbol BTC/USDT \
+  --target-exchange okx \
+  --json
+```
+
+To sweep multiple symbols and rank the closest carry/basis unlock candidates before any demo-window attempt:
+
+```bash
+uv run crypto-assistant strategy carry-basis-optimize \
+  --config ../configs/okx.demo.example.yaml \
+  --symbols BTC/USDT,ETH/USDT,SOL/USDT \
+  --target-exchange okx \
+  --min-quality-score 80 \
+  --max-symbols 6 \
+  --request-budget-seconds 60 \
+  --per-symbol-timeout-seconds 15 \
+  --json
+```
+
+Start OKX sweeps with a small symbol set because each symbol reads spot/perp/funding/futures diagnostics from public endpoints. Use `--max-symbols`, `--request-budget-seconds`, and `--per-symbol-timeout-seconds` for bounded observer runs; sweep JSON includes per-symbol `observations` plus skipped, timeout, failed, and cache-hit counts. These controls are read-only and do not bypass demo preflight.
 
 Dynamic universe and regime routing are read-only foundations for the next profit-expansion layer. `strategy universe` filters configured symbols by spread, 24h quote volume, depth, and completed-candle behavior; `strategy regime-report` classifies a symbol as `trend`, `range`, `carry`, `illiquid`, or `avoid` so future strategy selection can route range markets to grid/mean-reversion, trends to breakout/momentum, and carry regimes to basis/funding scans.
 
@@ -343,13 +395,19 @@ uv run crypto-assistant strategy hedged-maker-report \
 The OKX Demo manager is a separate command for sandbox parity testing from an explicit opportunity file. It does not make the generic `strategy run --strategy hedged-maker --execution-mode demo` path available:
 
 ```bash
+uv run crypto-assistant strategy hedged-maker-demo-candidate \
+  --config ../configs/okx.demo.example.yaml \
+  --symbol BTC/USDT \
+  --target-exchange okx \
+  --json
+
 uv run crypto-assistant strategy hedged-maker-demo \
   --config ../configs/okx.demo.example.yaml \
   --opportunity-file hedged-maker-okx-opportunity.json \
   --json
 ```
 
-The opportunity file must describe a `strategy_type=hedged-maker` OKX opportunity with `maker_quote`, `hedge_preview`, and passing `execution_quality` metadata. The command requires OKX Demo credentials, `COINBOT_AGENT_OPERATOR_ID`, `agent_trading.allow_demo_orders=true`, the `hedged-maker` strategy allowlist, OKX exchange allowlist, risk approval, budget approval, provider demo-mode verification, and audit logging. It stores own-order state under `hedged_maker.demo_state_path`, submits maker quotes as OKX Demo `post_only` spot orders, cancels/replaces stale or repriced quotes, and sends the hedge only after observing a maker fill. Live maker orders are still unsupported.
+`hedged-maker-demo-candidate` is read-only and returns an `opportunity_file_payload` plus compatibility reasons; local mock OKX configs deliberately report `target_exchange_adapter_is_mock` and must not be sent to the manager. OKX-targeted `strategy scan`/`market-compare` diagnostics for `hedged-maker` reuse the same single-exchange candidate payload path, so sandbox diagnostics are blocked by actual edge, spread, depth, and compatibility reasons instead of the generic paper scanner's secondary hedge exchange config. The opportunity file must describe a `strategy_type=hedged-maker` OKX opportunity with `maker_quote`, `hedge_preview`, and passing `execution_quality` metadata. The manager command requires OKX Demo credentials, `COINBOT_AGENT_OPERATOR_ID`, `agent_trading.allow_demo_orders=true`, the `hedged-maker` strategy allowlist, OKX exchange allowlist, risk approval, budget approval, provider demo-mode verification, and audit logging. It stores own-order state under `hedged_maker.demo_state_path`, submits maker quotes as OKX Demo `post_only` spot orders, cancels/replaces stale or repriced quotes, and sends the hedge only after observing a maker fill. Live maker orders are still unsupported.
 
 DEX/CLMM liquidity provision is intentionally deferred. The readiness command is a no-order checklist for future testnet work:
 
@@ -487,6 +545,12 @@ uv run crypto-assistant strategy demo-sampling \
 For hedged-maker sandbox parity, use the explicit opportunity-file manager instead of the generic demo runtime:
 
 ```bash
+uv run crypto-assistant strategy hedged-maker-demo-candidate \
+  --config ../configs/okx.demo.example.yaml \
+  --symbol BTC/USDT \
+  --target-exchange okx \
+  --json
+
 uv run crypto-assistant strategy hedged-maker-demo \
   --config ../configs/okx.demo.example.yaml \
   --opportunity-file hedged-maker-okx-opportunity.json \
@@ -514,7 +578,7 @@ uv run crypto-assistant strategy promotion-status \
 | Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy dex-lp-readiness`, `strategy market-compare`, `strategy portfolio-status` |
 | Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
-| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
+| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy diversification-report`, `strategy directional-sleeve-status`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo-candidate`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
 | Backtest/report/workflow | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
 
@@ -540,6 +604,16 @@ COINBOT_OKX_DEMO=true
 ```
 
 Without OKX credentials, mock exchange, paper validation, local scans, and many public market/analytics endpoints still work. Private OKX account reads and OKX Demo Trading require local credentials.
+
+## Repository Hygiene
+
+Keep local runtime artifacts out of git:
+
+- Secret files: `.env`, `.env.*`, `.env.okx.demo`, and `.env.okx.live`; only the checked-in `*.example` templates are safe.
+- Runtime evidence: `logs/`, `backend/logs/`, JSONL journals, local state files, generated opportunity payloads, and temporary SQLite/DuckDB databases.
+- Tool output: Python caches, uv cache, Node build output, Rust `target/`, coverage reports, and editor metadata.
+
+Do commit the lock files (`uv.lock`, `frontend/package-lock.json`, `Cargo.lock`) and the curated refactor state JSON files under `docs/plan/2026-05-09-refactor/`.
 
 ## Verification
 

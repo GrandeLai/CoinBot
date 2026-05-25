@@ -1040,7 +1040,7 @@ Safety:
 - Directional demo execution remains OKX-demo-only, long-only spot, and allowlist gated.
 - No demo size cap was increased.
 - No guard, risk, or profitability threshold was weakened.
-- Reverse-signal exits remain a follow-up; implemented exits are take-profit, stop-loss, and time limit.
+- Reverse-signal exits are implemented and verified in `docs/plan/2026-05-09-refactor/56-directional-managed-exit-report.md`; managed exits now include take-profit, stop-loss, explicit reverse signal, and time limit.
 
 ## 12.7 Strategy Evolution System Addendum
 
@@ -1244,6 +1244,260 @@ Safety:
 - No live/demo gate was weakened.
 - Demo size-stage readiness now explicitly blocks size increase when recent demo sample quality is insufficient, including historical `executed_preflight_missing`.
 
+## 12.12 Carry/Basis Target Unlock Diagnostics Addendum
+
+Date: 2026-05-19
+
+Implemented:
+
+- Added `--target-exchange` to `crypto-assistant strategy carry-basis-optimize`.
+- Carry/basis optimization cards now merge read-only target-market comparison verdicts for `funding-carry-hedged`, `spot-perp-carry`, and `futures-perp-basis`.
+- Each card can report target exchange, target verdict, target reasons, target best net PnL, target-vs-mock delta, and an `unlock_priority` such as `demo_candidate`, `paper_candidate`, or `observe_only`.
+- Summary output now includes target demo-preflight candidate counts and high-priority unlock counts.
+- Added `docs/plan/2026-05-09-refactor/87-carry-basis-target-unlock-plan.md` and `docs/plan/2026-05-09-refactor/88-carry-basis-target-unlock-report.md`.
+
+Validation:
+
+- `pytest` targeted carry/basis and market-compare suite returned `5 passed`.
+- Targeted `ruff` returned `All checks passed!`.
+- Targeted `mypy` returned `Success: no issues found in 3 source files`.
+- Mock-only CLI smoke command returned exit `0` with `read_only=true`, `orders_sent=false`, `live_orders_sent=false`, `target_exchange=mock`, and `target_demo_preflight_candidate_count=3`.
+- OKX Demo config validation returned `valid=true` with demo trading enabled, live trading disabled, and live-agent orders disabled.
+- OKX Demo sandbox check returned `ok=true` with public market data, spot/perp quotes, and private read-only account checks passing; `live_orders_sent=false`.
+- OKX Demo carry/basis target diagnostics returned `target_demo_preflight_candidate_count=0`, `high_priority_unlock_count=0`, and all carry/basis cards as `unlock_priority=observe_only`.
+- OKX Demo `demo-window` orchestration for `futures-perp-basis` returned `status=Blocked`, `block_reasons=["missing_demo_preflight_candidate"]`, `orders_attempted=false`, and `live_orders_sent=false`.
+
+Safety:
+
+- The new target exchange path reuses read-only `strategy market-compare`.
+- No journal, retrospective, guard, or evolution state is written by the optimizer.
+- No OKX demo or live order path was added.
+- No risk, profitability, preflight, demo, or live gate was weakened.
+- The OKX Demo validation stopped at the preflight gate because the current market state had no carry/basis demo candidate.
+
+## 12.14 Carry/Basis Multi-Symbol Sweep Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added `--symbols` to `crypto-assistant strategy carry-basis-optimize`.
+- Added read-only sweep output with per-symbol reports, global ranked cards, and aggregate symbol/card/candidate counts.
+- Kept existing single-symbol `--symbol` output unchanged unless `--symbols` is supplied.
+- Tightened `funding-carry-hedged` scan/diagnostic wiring so symbol-specific carry/basis reports respect the requested symbol.
+- Scoped carry/basis target comparison to `funding-carry-hedged`, `spot-perp-carry`, and `futures-perp-basis` rather than running all strategy scans.
+- Added `docs/plan/2026-05-09-refactor/89-carry-basis-multi-symbol-sweep-plan.md` and `docs/plan/2026-05-09-refactor/90-carry-basis-multi-symbol-sweep-report.md`.
+
+Validation:
+
+- Targeted carry/basis unit and CLI suite returned `4 passed`.
+- Targeted `ruff` returned `All checks passed!`.
+- Targeted `mypy` returned `Success: no issues found in 6 source files`.
+- Mock CLI sweep returned `mode=sweep`, `symbol_count=3`, `card_count=9`, `target_demo_preflight_candidate_count=7`, `orders_sent=false`, and `live_orders_sent=false`.
+- OKX Demo single-symbol read-only sweep returned `mode=sweep`, `symbol_count=1`, `card_count=3`, `target_demo_preflight_candidate_count=0`, `top_strategy=futures-perp-basis`, closest break-even gap about `0.073483` USDT, `orders_sent=false`, and `live_orders_sent=false`.
+- Wider OKX read-only sweeps over three and six symbols were manually terminated after exceeding the normal single-symbol diagnostic window; no orders were attempted. This is recorded as a follow-up for request budgeting or bounded per-symbol timeouts before wide OKX sweeps become routine.
+
+Safety:
+
+- The sweep is read-only and does not invoke the strategy runner, demo executor, broker, live-agent executor, journal writer, retrospective writer, guard writer, or evolution writer.
+- It does not lower risk, profitability, preflight, demo, or live gates.
+- It is intended to rank symbol/strategy pairs before any OKX Demo `demo-window` attempt.
+
+## 12.15 Carry/Basis Candidate Quality Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added deterministic `quality_score`, `quality_bucket`, and `quality_reasons` to carry/basis optimization cards.
+- Added `--min-quality-score` to `crypto-assistant strategy carry-basis-optimize` for sweep ranked-card filtering.
+- Sweep summaries now include total card count, filtered-out count, score floor, and high-quality candidate count.
+- Filtering applies only to sweep `ranked_cards`; per-symbol reports keep all cards and blocker diagnostics.
+- Added `docs/plan/2026-05-09-refactor/91-carry-basis-candidate-quality-plan.md` and `docs/plan/2026-05-09-refactor/92-carry-basis-candidate-quality-report.md`.
+
+Validation:
+
+- RED tests failed on missing `quality_score` and unsupported `--min-quality-score`, then passed after implementation.
+- Targeted carry/basis quality and regression tests returned `4 passed`.
+- Targeted `ruff` returned `All checks passed!`.
+- Targeted `mypy` returned `Success: no issues found in 6 source files`.
+- Mock CLI quality-filtered sweep returned `mode=sweep`, `symbol_count=3`, `total_card_count=9`, `card_count=7`, `filtered_out_count=2`, `min_quality_score=80`, `high_quality_candidate_count=7`, `orders_sent=false`, and `live_orders_sent=false`.
+
+Safety:
+
+- Candidate quality is advisory and deterministic.
+- It does not call execution paths, send orders, write runtime state, mutate config, or bypass preflight/demo/live gates.
+
+## 12.16 Carry/Basis Bounded Observer Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added bounded observer controls to `crypto-assistant strategy carry-basis-optimize`: `--max-symbols`, `--request-budget-seconds`, and `--per-symbol-timeout-seconds`.
+- Added per-symbol sweep `observations` with completed, cached, skipped-budget, timed-out, and failed statuses.
+- Added sweep summary counts for requested/evaluated/skipped/timeout/failed/cache-hit symbols plus elapsed and budget fields.
+- Added in-process report caching for repeated symbol/target pairs within a single optimizer service.
+- Added `docs/plan/2026-05-09-refactor/93-carry-basis-bounded-observer-plan.md` and `docs/plan/2026-05-09-refactor/94-carry-basis-bounded-observer-report.md`.
+
+Validation:
+
+- RED tests failed on unsupported sweep budget parameters and unsupported CLI flags, then passed after implementation.
+- Final verification results are recorded in `94-carry-basis-bounded-observer-report.md`.
+
+Safety:
+
+- The bounded observer is read-only and does not invoke execution paths.
+- Timeout, budget, and cache metadata do not create demo eligibility.
+- The normal `demo-window`, runtime guard, risk, preflight, receipt, residual, and live gates remain unchanged.
+
+## 12.17 Strategy Family Diversification Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added `crypto-assistant strategy diversification-report`.
+- Added `StrategyDiversificationService` to aggregate deterministic advisory-rank evidence by family.
+- Family rows include candidate count, demo candidate count, validation executions, validation PnL, candidate share, advisory validation-budget share, over-concentration flag, and recommendations.
+- Added `--max-family-share-pct` so operators can explicitly cap validation-budget guidance for any one family.
+- Added `docs/plan/2026-05-09-refactor/95-strategy-family-diversification-plan.md` and `docs/plan/2026-05-09-refactor/96-strategy-family-diversification-report.md`.
+
+Validation:
+
+- RED tests failed on missing `trading_assistant.strategies.diversification` and unsupported CLI command, then passed after implementation.
+- Final verification results are recorded in `96-strategy-family-diversification-report.md`.
+
+Safety:
+
+- The diversification report is read-only and does not invoke execution paths.
+- Advisory validation-budget shares do not mutate portfolio selection or strategy ranking.
+- The normal demo-window, runtime guard, risk, preflight, receipt, residual, and live gates remain unchanged.
+
+## 12.18 Hedged Maker Demo Candidate Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added `crypto-assistant strategy hedged-maker-demo-candidate`.
+- Added `HedgedMakerDemoCandidateService` to generate reviewable OKX Demo manager opportunity payloads from current market data.
+- Candidate output includes maker quote, hedge preview, execution-quality metadata, compatibility reasons, diagnostics, and next actions.
+- Local mock OKX configs can validate payload shape but report `target_exchange_adapter_is_mock` and remain incompatible with the demo manager.
+- Added `docs/plan/2026-05-09-refactor/97-hedged-maker-demo-candidate-plan.md` and `docs/plan/2026-05-09-refactor/98-hedged-maker-demo-candidate-report.md`.
+
+Validation:
+
+- RED tests failed on missing `trading_assistant.strategies.hedged_maker_candidate` and unsupported CLI command, then passed after implementation.
+- Final verification results are recorded in `98-hedged-maker-demo-candidate-report.md`.
+
+Safety:
+
+- The candidate command is read-only and does not invoke execution paths.
+- It does not submit maker or hedge orders and does not write paper/demo/audit state.
+- The generic `strategy run --strategy hedged-maker --execution-mode demo` path remains unsupported.
+- The explicit `hedged-maker-demo` manager still owns all OKX Demo credential, operator, audit, risk, budget, provider demo-mode, and safety gates.
+
+## 12.19 Directional Sleeve Status Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Added `crypto-assistant strategy directional-sleeve-status`.
+- Added `DirectionalSleeveStatusService` to report directional strategy promotion stages from validation and runtime guard evidence.
+- Strategy rows include demo enablement, fixed live-disabled status, validation samples, win rate, PnL, drawdown, guard cooldown, stage, reasons, and recommended actions.
+- Summary exposes directional sleeve caps and reports `directional_live_supported=false`.
+- Added `docs/plan/2026-05-09-refactor/100-directional-sleeve-status-plan.md` and `docs/plan/2026-05-09-refactor/101-directional-sleeve-status-report.md`.
+
+Validation:
+
+- RED tests failed on missing `trading_assistant.strategies.directional_sleeve` and unsupported CLI command, then passed after implementation.
+- Final verification results are recorded in `101-directional-sleeve-status-report.md`.
+
+Safety:
+
+- The sleeve status command is read-only and does not invoke execution paths or exchange APIs.
+- It does not write journal, guard, retrospective, evolution, or directional position state.
+- Directional live trading remains unsupported.
+- Demo eligibility is advisory only and cannot bypass demo-window, runtime guard, risk, preflight, receipt, residual, or live gates.
+
+## 12.20 Diversification Validation Queue Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Extended `crypto-assistant strategy diversification-report` with a read-only `validation_queue`.
+- Queue items include strategy, family, recommended stage, advisory score, family budget share, candidate share, current and observed candidate counts, validation PnL, guard state, reasons, and next action.
+- Added summary fields for `validation_queue_count`, `non_triangular_queue_count`, `triangular_queue_count`, and `queue_policy=family_budget_capped_non_triangular_first`.
+- Added `family_budget_capped_non_triangular_first` to guardrails so operators can detect the non-triangular-first queue policy.
+- Added `docs/plan/2026-05-09-refactor/102-diversification-validation-queue-plan.md` and `docs/plan/2026-05-09-refactor/103-diversification-validation-queue-report.md`.
+
+Validation:
+
+- RED tests failed on missing `validation_queue` and queue summary fields, then passed after implementation.
+- Final verification results are recorded in `103-diversification-validation-queue-report.md`.
+
+Safety:
+
+- The queue is advisory and read-only.
+- It does not call the strategy runner, demo manager, broker, live agent, or exchange APIs.
+- It does not mutate config, portfolio selection, strategy ranking, journal, guard, retrospective, or evolution state.
+- The normal demo-window, runtime guard, risk, preflight, receipt, residual, and live gates remain unchanged.
+
+## 12.21 Validation Queue Quality Floor Addendum
+
+Date: 2026-05-20
+
+Implemented:
+
+- Extended `validation_queue` items with deterministic `quality_score`, `quality_bucket`, and `quality_reasons`.
+- Added `--min-queue-quality-score` to `crypto-assistant strategy diversification-report`.
+- Added queue summary fields for `unfiltered_validation_queue_count`, `filtered_validation_queue_count`, `high_quality_queue_count`, and `min_queue_quality_score`.
+- Quality scoring rewards current candidate evidence, high advisory score, validation samples, positive validation PnL, win-rate evidence, and non-triangular diversification value.
+- Quality scoring penalizes runtime guard cooldown, repeated demo preflight pressure, observed break-even gaps, validation quality failures, and watchlist/paper-only stages.
+- Added `docs/plan/2026-05-09-refactor/104-validation-queue-quality-floor-plan.md` and `docs/plan/2026-05-09-refactor/105-validation-queue-quality-floor-report.md`.
+
+Validation:
+
+- RED tests failed on missing quality fields, missing service parameter, and unsupported CLI flag, then passed after implementation.
+- Final verification results are recorded in `105-validation-queue-quality-floor-report.md`.
+
+Safety:
+
+- The quality floor filters only the read-only queue shortlist.
+- Family concentration diagnostics remain unfiltered.
+- It does not call the strategy runner, demo manager, broker, live agent, or exchange APIs.
+- It does not mutate config, portfolio selection, strategy ranking, journal, guard, retrospective, or evolution state.
+- The normal demo-window, runtime guard, risk, preflight, receipt, residual, and live gates remain unchanged.
+
+## 12.22 Hedged Maker OKX Target Diagnostics Addendum
+
+Date: 2026-05-21
+
+Implemented:
+
+- Routed OKX-targeted `hedged-maker` diagnostics through `HedgedMakerDemoCandidateService`.
+- Passed explicit scan exchange selection into diagnostics so targeted scans and diagnostic evidence use the same exchange.
+- Added a regression test proving OKX hedged-maker scan diagnostics no longer fail on a disabled `mock_alt` hedge exchange when the target exchange is OKX.
+- Updated README, DESIGN, traceability, and added `docs/plan/2026-05-09-refactor/106-hedged-maker-okx-diagnostics-plan.md` plus `docs/plan/2026-05-09-refactor/107-hedged-maker-okx-diagnostics-report.md`.
+
+Validation:
+
+- RED test failed on missing candidate diagnostic fields, then passed after implementation.
+- OKX read-only `market-compare` smoke for `hedged-maker` produced an OKX opportunity payload and no longer reported `diagnostic_error:Exchange is disabled: mock_alt`.
+- The same OKX smoke remained observe-only on `edge_below_minimum`; no orders were sent.
+- Bounded BTC carry/basis observer completed and still reported `target_demo_preflight_candidate_count=0`.
+- Final verification results are recorded in `107-hedged-maker-okx-diagnostics-report.md`.
+
+Safety:
+
+- The diagnostic path is read-only and sends no orders.
+- It does not write paper, demo, audit, journal, runtime guard, retrospective, or evolution state.
+- The generic `strategy run --strategy hedged-maker --execution-mode demo` path remains unsupported.
+- The explicit `hedged-maker-demo` manager keeps all OKX Demo credential, operator, audit, risk, budget, provider demo-mode, and order-dispatch gates.
+
 ## 13. Follow-Up Optimizations
 
 - Install and validate `ccxt` in controlled Binance/Bybit sandbox or read-only environments before enabling those configs.
@@ -1268,6 +1522,8 @@ Safety:
 - Wire strategy-specific OKX demo brokers for the four strategies after real-market scanner validation; do not enable demo strategy execution by label alone.
 - Keep `spot-perp-carry`, `funding-carry-hedged`, and `futures-perp-basis` at tiny OKX demo canary size until real-market preflight turns profitable and longer local/demo samples prove clean receipts, residual inventory below tolerance, and acceptable drawdown.
 - Run `strategy market-compare --config configs/okx.demo.example.yaml --strategy all --target-exchange okx --json` before every future OKX demo execution attempt and only consider demo orders for strategies that return `demo_preflight_candidate`.
+- Run `strategy carry-basis-optimize --config configs/okx.demo.example.yaml --symbol BTC/USDT --target-exchange okx --json` before carry/basis demo discussion and prioritize only `unlock_priority=demo_candidate` cards.
+- Run `strategy diversification-report --config configs/okx.demo.example.yaml --strategy all --execution-mode paper --min-queue-quality-score 80 --json` before allocating validation windows and select from `validation_queue` before adding more triangular-only samples.
 - Run `strategy opportunity-report --config configs/okx.demo.example.yaml --window 24h --json` before any size-stage discussion to confirm candidate density, expected-vs-actual quality, and size readiness.
 - Run `strategy discover-routes --config configs/okx.demo.example.yaml --exchange okx --quote USDT --json` before triangular scans so filtered-route reasons can guide OKX universe expansion without forcing orders.
 - Use `strategy evolve --execution-mode paper` and later `--execution-mode demo` before each strategy pool change; archived strategies should return only through profitable simulated evidence, not manual preference.
@@ -1275,4 +1531,4 @@ Safety:
 
 ## 14. Delivery Decision
 
-Meets the current deliverable standard for the offline safe refactor core, OKX Demo Trading validation of supported canary paths, controlled OKX Demo Trading execution/PnL canary cycles including run/review/optimize/rerun loops, orderbook-based OKX triangular demo fill-reliability hardening, the three-layer local/demo/live-canary validation gate, the OKX-first strategy platform with expanded pure-arbitrage scan/paper coverage, OKX spot directional strategies with persisted managed demo position lifecycle, the read-only mock-vs-OKX market comparison gate before demo preflight, read-only opportunity-density reporting, instrument-driven triangular route discovery, discovered-route triangular scans with multi-level fill evidence, read-only market/account diagnostics with explicit separated config loading, the non-blocking strategy retrospective memory, retrospective-driven optimization pressure, retrospective-aware strategy scoring, the simulation-only strategy evolution system for promotion/archive/revival decisions, advisory parameter candidates, completed-candle-derived market-regime tags, isolated temporary-config candidate backtests, local-first revival windows for revive candidates, guard-hygienic demo validation that avoids empty cooldown windows, the latest same-size 10-cycle targeted triangular OKX demo validation, the PnL reconciliation audit separating expected preflight, order cash-flow, and account-equity evidence, and the demo preflight fill-price optimization that produced a new positive triangular OKX demo canary without weakening gates. Broader real exchange/live trading work remains explicitly deferred and documented.
+Meets the current deliverable standard for the offline safe refactor core, OKX Demo Trading validation of supported canary paths, controlled OKX Demo Trading execution/PnL canary cycles including run/review/optimize/rerun loops, orderbook-based OKX triangular demo fill-reliability hardening, the three-layer local/demo/live-canary validation gate, the OKX-first strategy platform with expanded pure-arbitrage scan/paper coverage, OKX spot directional strategies with persisted managed demo position lifecycle, the read-only mock-vs-OKX market comparison gate before demo preflight, read-only carry/basis target-unlock diagnostics, read-only opportunity-density reporting, instrument-driven triangular route discovery, discovered-route triangular scans with multi-level fill evidence, read-only market/account diagnostics with explicit separated config loading, the non-blocking strategy retrospective memory, retrospective-driven optimization pressure, retrospective-aware strategy scoring, the simulation-only strategy evolution system for promotion/archive/revival decisions, advisory parameter candidates, completed-candle-derived market-regime tags, isolated temporary-config candidate backtests, local-first revival windows for revive candidates, guard-hygienic demo validation that avoids empty cooldown windows, the latest same-size 10-cycle targeted triangular OKX demo validation, the PnL reconciliation audit separating expected preflight, order cash-flow, and account-equity evidence, and the demo preflight fill-price optimization that produced a new positive triangular OKX demo canary without weakening gates. Broader real exchange/live trading work remains explicitly deferred and documented.
