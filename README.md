@@ -1,26 +1,28 @@
 # CoinBot
 
-CoinBot is a local-first, crypto-only quant trading and research monorepo extracted from QuantPilot. It focuses on safe crypto market data, OKX demo/live separation, arbitrage and directional strategy validation, PnL attribution, and agent-friendly CLI workflows.
+默认文档语言：中文。英文版本见：[README.en.md](README.en.md)。
 
-It is not a turnkey profit machine. The default path is mock exchange, dry-run, and paper trading; every order-capable path is gated and observable before it can reach OKX Demo Trading or live trading.
+CoinBot 是从 QuantPilot 拆出的本地优先、仅面向加密货币的量化交易与研究 monorepo。它聚焦安全的加密行情数据、OKX Demo/Live 隔离、套利与方向性策略验证、PnL 归因，以及适合本地 Agent 调用的 `crypto-assistant` CLI。
 
-## What Is Inside
+CoinBot 不是开箱即用的盈利机器。默认路径是 mock exchange、dry-run 和 paper trading；所有可能下单的路径都必须先经过安全门禁、可观测检查和风险批准，才可能触达 OKX Demo Trading 或实盘。
 
-| Path | Purpose |
+## 仓库内容
+
+| 路径 | 用途 |
 | --- | --- |
-| `backend` | Python 3.12 FastAPI service for crypto APIs, OKX trading surfaces, derivatives analytics, research, whale flow, token unlocks, and the `crypto-assistant` CLI. |
-| `backend/src/trading_assistant` | Safe local trading assistant package: config, exchange interfaces, market data, arbitrage, strategy runtime, validation, reporting, and CLI handlers. |
-| `common/python` | Shared Python config, crypto market data models, DuckDB storage, and OKX data fetcher utilities. |
-| `quant-core` | Rust axum service for backtest, optimization, walk-forward validation, indicators, and Rhai strategy runtime. |
-| `frontend` | React + Vite + Tailwind UI for the crypto assistant, OKX trading views, research, and quant workbench panels. |
-| `configs` | Safe example configs for local mock/paper, 100 USDC paper validation, OKX Demo Trading, and OKX live separation. |
-| `docs` | Design notes, refactor plans, phase reports, and migrated task/acceptance records. |
+| `backend` | Python 3.12 FastAPI 服务，包含 crypto API、OKX 交易面、衍生品分析、研究、巨鲸流、解锁数据和 `crypto-assistant` CLI。 |
+| `backend/src/trading_assistant` | 安全优先的本地交易助手包，包含配置、交易所接口、行情、套利、策略运行、验证、报告和 CLI handler。 |
+| `common/python` | 共享 Python 配置、加密行情模型、DuckDB 存储和 OKX 数据抓取工具。 |
+| `quant-core` | Rust axum 服务，提供回测、优化、walk-forward 验证、指标和 Rhai 策略运行时。 |
+| `frontend` | React + Vite + Tailwind UI，用于 crypto assistant、OKX 交易视图、研究和 quant workbench 面板。 |
+| `configs` | 本地 mock/paper、100 USDC paper validation、OKX Demo Trading 和 OKX live 隔离配置模板。 |
+| `docs` | 设计文档、重构计划、阶段报告、迁移任务和验收记录。 |
 
-## Safety Model
+## 安全模型
 
-The repository is crypto-only. Do not add stock, ETF, A-share, Hong Kong equity, Futu, or Longbridge surfaces.
+本仓库只支持加密货币。不要加入股票、ETF、A 股、港股、Futu 或 Longbridge 相关能力。
 
-Default trading behavior must remain:
+默认交易配置必须保持：
 
 ```yaml
 trading:
@@ -29,22 +31,22 @@ trading:
   require_confirm_before_order: true
 ```
 
-Real orders require all configured gates to pass: live trading enabled, dry-run disabled, a non-mock exchange enabled, credentials loaded from environment variables, risk approval, and explicit agent/order permissions where applicable. Autonomous live trading is additionally blocked unless `agent_trading.enabled=true`, `agent_trading.allow_live_orders=true`, an allowlisted strategy/exchange is configured, `COINBOT_AGENT_OPERATOR_ID` is present, audit logging is enabled, caps are set, and `COINBOT_AGENT_LIVE_KILL_SWITCH` is not enabled.
+真实订单必须满足所有门禁：启用 live trading、关闭 dry-run、启用非 mock 交易所、从环境变量加载凭证、通过风险批准，并在需要时通过 agent/order 权限。自主实盘交易还必须满足 `agent_trading.enabled=true`、`agent_trading.allow_live_orders=true`、策略和交易所 allowlist、`COINBOT_AGENT_OPERATOR_ID`、审计日志、下单上限、执行质量批准，并且 `COINBOT_AGENT_LIVE_KILL_SWITCH` 未启用。
 
-OKX Demo Trading and OKX live trading use separate config and secret files:
+OKX Demo Trading 和 OKX live 使用不同配置和本地密钥文件：
 
-| Mode | Config | Local secret file | Notes |
+| 模式 | 配置 | 本地密钥文件 | 说明 |
 | --- | --- | --- | --- |
-| Local paper/mock | `configs/config.example.yaml` | none required | Safe default for development and agent runs. |
-| 100 USDC paper validation | `configs/100usdc.paper.example.yaml` | none required | Bounded local route for small-capital validation evidence. |
-| OKX Demo Trading | `configs/okx.demo.example.yaml` | `.env.okx.demo` | May send tiny demo orders only after demo gates pass. |
-| OKX live | `configs/okx.live.example.yaml` | `.env.okx.live` | Still blocked by live and agent gates by default. |
+| 本地 paper/mock | `configs/config.example.yaml` | 不需要 | 开发和 Agent 默认安全配置。 |
+| 100 USDC paper validation | `configs/100usdc.paper.example.yaml` | 不需要 | 小资金本地验证证据路径。 |
+| OKX Demo Trading | `configs/okx.demo.example.yaml` | `.env.okx.demo` | 仅在 demo 门禁通过后允许极小 demo 订单。 |
+| OKX live | `configs/okx.live.example.yaml` | `.env.okx.live` | 默认仍被 live 和 agent 门禁阻断。 |
 
-Never commit `.env`, `.env.okx.demo`, `.env.okx.live`, API keys, secrets, passphrases, tokens, or plaintext sensitive logs.
+不要提交 `.env`、`.env.okx.demo`、`.env.okx.live`、API key、secret、passphrase、token 或包含明文敏感信息的日志。
 
-## Quick Start
+## 快速开始
 
-Install and run the three app surfaces in separate terminals:
+分别在三个终端启动服务：
 
 ```bash
 cd backend
@@ -62,17 +64,17 @@ npm install
 npm run dev
 ```
 
-Local URLs:
+本地地址：
 
-| Service | URL |
+| 服务 | URL |
 | --- | --- |
 | Frontend | `http://127.0.0.1:5173` |
 | Python API | `http://127.0.0.1:8001` |
 | Rust quant-core | `http://127.0.0.1:8002` |
 
-## First Safe CLI Run
+## 第一次安全 CLI 运行
 
-Start with the mock/paper profile. These commands do not send real orders:
+从 mock/paper 配置开始。以下命令不会发送真实订单：
 
 ```bash
 cd backend
@@ -83,11 +85,11 @@ uv run crypto-assistant exchange ping --config ../configs/config.example.yaml --
 uv run crypto-assistant market ticker --config ../configs/config.example.yaml --exchange mock --symbol BTC/USDT --json
 ```
 
-If a Codex or sandboxed local environment cannot write to the default uv cache, prefix commands with `UV_CACHE_DIR=.uv-cache`.
+如果 Codex 或沙盒环境不能写默认 uv cache，可以给命令加上 `UV_CACHE_DIR=.uv-cache`。
 
-## 100 USDC Paper Validation
+## 100 USDC Paper 验证
 
-Use this when you want a small-capital, local-only validation pass before any OKX demo step:
+在任何 OKX demo 步骤前，可以先做小资金、本地-only 验证：
 
 ```bash
 cd backend
@@ -99,7 +101,7 @@ uv run crypto-assistant strategy validate-local \
   --json
 ```
 
-Then inspect realized paper PnL and attribution from the generated journal:
+再从生成的 journal 查看 paper PnL 和归因：
 
 ```bash
 uv run crypto-assistant strategy validation-report \
@@ -117,13 +119,13 @@ uv run crypto-assistant strategy pnl-attribution \
   --json
 ```
 
-Treat paper/mock results as system evidence, not market profit. They verify strategy selection, risk gates, journaling, PnL aggregation, drawdown tracking, and attribution plumbing.
+paper/mock 结果是系统证据，不是市场盈利承诺。它验证策略选择、风险门禁、journal、PnL 聚合、回撤跟踪和归因链路。
 
-## Strategy Workflow
+## 策略工作流
 
-The strategy platform separates read-only discovery, paper validation, OKX demo sampling, and promotion evidence.
+策略平台分为 read-only discovery、paper validation、OKX demo sampling 和 promotion evidence。
 
-### Read-Only Discovery
+### 只读发现
 
 ```bash
 cd backend
@@ -139,7 +141,7 @@ uv run crypto-assistant strategy universe --config ../configs/config.example.yam
 uv run crypto-assistant strategy regime-report --config ../configs/config.example.yaml --exchange mock --symbol BTC/USDT --json
 ```
 
-For triangular route expansion:
+三角套利路由扩展：
 
 ```bash
 uv run crypto-assistant strategy discover-routes \
@@ -156,7 +158,7 @@ uv run crypto-assistant strategy scan \
   --json
 ```
 
-### Paper Runtime
+### Paper 运行
 
 ```bash
 uv run crypto-assistant strategy run \
@@ -173,11 +175,11 @@ uv run crypto-assistant strategy guard-status \
   --json
 ```
 
-## Autopilot Runtime
+## Autopilot 运行时
 
-`crypto-assistant autopilot` is the detached paper/demo loop for running CoinBot without Codex automations. It can be launched by a shell, cron, launchd, systemd, or another process manager.
+`crypto-assistant autopilot` 是脱离 Codex automation 的 paper/demo 循环，可以由 shell、cron、launchd、systemd 或其他进程管理器启动。
 
-Paper mode never sends exchange orders:
+Paper 模式不会发送交易所订单：
 
 ```bash
 cd backend
@@ -190,7 +192,7 @@ UV_CACHE_DIR=.uv-cache uv run crypto-assistant autopilot run \
   --json
 ```
 
-OKX Demo mode uses the existing demo-window gates and may send only tiny OKX Demo Trading orders:
+OKX Demo 模式复用现有 demo-window 门禁，只可能发送极小 OKX Demo Trading 订单：
 
 ```bash
 UV_CACHE_DIR=.uv-cache uv run crypto-assistant autopilot run \
@@ -204,16 +206,16 @@ UV_CACHE_DIR=.uv-cache uv run crypto-assistant autopilot run \
   --json
 ```
 
-Status and reports are read-only:
+状态和报告是只读的：
 
 ```bash
 uv run crypto-assistant autopilot status --config ../configs/config.example.yaml --json
 uv run crypto-assistant autopilot report --config ../configs/config.example.yaml --mode paper --json
 ```
 
-Autopilot does not call `agent execute-live` or any live broker. If a paper/demo payload ever reports `live_orders_sent=true`, autopilot stops and persists `stopped_reason=live_order_detected`.
+Autopilot 不会调用 `agent execute-live` 或任何 live broker。如果 paper/demo payload 报告 `live_orders_sent=true`，autopilot 会停止并持久化 `stopped_reason=live_order_detected`。
 
-### Rolling Evidence
+## 滚动证据
 
 ```bash
 uv run crypto-assistant strategy validation-report \
@@ -257,34 +259,34 @@ uv run crypto-assistant strategy directional-sleeve-status \
   --json
 ```
 
-All rolling evidence commands are read-only and should report `orders_sent=false` and `live_orders_sent=false`.
+所有滚动证据命令都是只读命令，应该报告 `orders_sent=false` 和 `live_orders_sent=false`。
 
-| Command | Purpose |
+| 命令 | 用途 |
 | --- | --- |
-| `validation-report` | Aggregate execution quality, PnL, drawdown, reason counts, residual inventory, and receipt/tolerance failures. |
-| `advisory-rank` | Deterministic ranking from scorecards, rolling validation, opportunity density, and runtime guard state; it does not call external models or mutate configs. |
-| `diversification-report` | Strategy-family concentration, validation PnL, advisory validation-budget caps, and a family-balanced `validation_queue` with deterministic quality scores. |
-| `directional-sleeve-status` | Long-only directional promotion stages, size caps, guard cooldowns, and the permanent `directional_live_supported=false` boundary. |
-| `operator-brief` | No-order checkpoint before another demo or promotion step. |
-| `pnl-attribution` | Separates strategy cash-flow PnL from account-equity movement so unrelated inventory is not treated as strategy performance. |
-| `hedged-maker-report` | Paper-only maker quote lifecycle, queue/partial-fill quality, adverse-selection samples, simulated hedge slippage, and active quote state. |
+| `validation-report` | 聚合执行质量、PnL、回撤、原因计数、残余库存和 receipt/tolerance 失败。 |
+| `advisory-rank` | 基于 scorecard、滚动验证、机会密度和 runtime guard 的确定性排名，不调用外部模型、不修改配置。 |
+| `diversification-report` | 策略家族集中度、validation PnL、建议验证预算上限，以及带确定性质量分的 family-balanced `validation_queue`。 |
+| `directional-sleeve-status` | long-only 方向性策略 promotion stage、仓位上限、guard cooldown 和永久 `directional_live_supported=false` 边界。 |
+| `operator-brief` | 下一次 demo 或 promotion 前的 no-order operator checkpoint。 |
+| `pnl-attribution` | 区分策略现金流 PnL 和账户权益变化，避免把无关库存当作策略表现。 |
+| `hedged-maker-report` | Paper-only maker quote 生命周期、队列/部分成交质量、adverse selection 样本、模拟 hedge 滑点和当前 quote 状态。 |
 
-`diversification-report --min-queue-quality-score` filters only the queue while preserving family diagnostics. `hedged-maker-demo` remains a separate OKX Demo opportunity-file manager, not part of the generic `strategy run --strategy hedged-maker --execution-mode demo` path.
+`diversification-report --min-queue-quality-score` 只过滤 queue，不会隐藏 family diagnostics。`hedged-maker-demo` 是单独的 OKX Demo opportunity-file manager，不属于通用 `strategy run --strategy hedged-maker --execution-mode demo` 路径。
 
-## Strategy Families
+## 策略家族
 
-| Family | Strategies | Typical mode |
+| 家族 | 策略 | 典型模式 |
 | --- | --- | --- |
-| Cross-exchange arbitrage | `cross-exchange` | Mock/paper first; live adapter coverage is limited. |
-| Triangular arbitrage | `triangular-multi-route` plus aliases `triangular` | Read-only discovery, paper, then OKX demo sampling when gates pass. |
-| Carry and basis | `funding-carry-hedged`, `spot-perp-carry`, `futures-perp-basis` | Offline diagnostics and paper until economics beat fees, slippage, holding cost, and basis hedge cost. |
-| Range grid | `range-grid` | Paper-only range-bound grid opportunity estimates; OKX Demo and live orders are not supported. |
-| Smart DCA basket | `smart-dca-basket` plus alias `smart-dca` | Paper-only drawdown-tiered accumulation and basket weight-band diagnostics for BTC/ETH/SOL. |
-| Hedged maker / XEMM | `hedged-maker` | Paper passive quote planner with taker hedge preview; an explicit OKX Demo manager exists for approved opportunity files, while live maker orders are not supported. |
-| Directional spot | `trend-breakout`, `mean-reversion-spot`, `volatility-squeeze-breakout`, `momentum-rotation`, `orderbook-imbalance-scalp` | Paper first; selected strategies support tiny long-only OKX demo managed positions. Directional live trading is not supported. |
-| DEX/CLMM LP | `dex-lp-readiness` | Deferred readiness gate for future DEX liquidity provision; no wallet, gateway, LP, demo, or live execution is implemented. |
+| 跨交易所套利 | `cross-exchange` | 先 mock/paper；live adapter 覆盖有限。 |
+| 三角套利 | `triangular-multi-route`，兼容别名 `triangular` | 只读发现、paper，再在门禁通过后做 OKX demo sampling。 |
+| Carry and basis | `funding-carry-hedged`、`spot-perp-carry`、`futures-perp-basis` | 离线诊断和 paper，直到经济性覆盖手续费、滑点、持有成本和 basis hedge cost。 |
+| Range grid | `range-grid` | Paper-only 区间网格机会估计；不支持 OKX Demo 和 live 订单。 |
+| Smart DCA basket | `smart-dca-basket`，兼容别名 `smart-dca` | Paper-only BTC/ETH/SOL 回撤分层定投和 basket 权重诊断。 |
+| Hedged maker / XEMM | `hedged-maker` | Paper 被动报价规划和 taker hedge preview；approved opportunity file 有显式 OKX Demo manager；不支持 live maker 订单。 |
+| 方向性现货 | `trend-breakout`、`mean-reversion-spot`、`volatility-squeeze-breakout`、`momentum-rotation`、`orderbook-imbalance-scalp` | 先 paper；部分策略支持极小 long-only OKX demo 托管仓位。方向性 live trading 不支持。 |
+| DEX/CLMM LP | `dex-lp-readiness` | 未来 DEX 流动性 provision 的 readiness gate；未实现 wallet、gateway、LP、demo 或 live execution。 |
 
-Carry/basis tuning is read-only:
+Carry/basis 调优是只读的：
 
 ```bash
 uv run crypto-assistant strategy carry-basis-optimize \
@@ -293,7 +295,7 @@ uv run crypto-assistant strategy carry-basis-optimize \
   --json
 ```
 
-To compare the same carry/basis candidates against a configured read-only target exchange before any demo preflight:
+对比同一 carry/basis 候选在目标交易所上的只读表现：
 
 ```bash
 uv run crypto-assistant strategy carry-basis-optimize \
@@ -303,7 +305,7 @@ uv run crypto-assistant strategy carry-basis-optimize \
   --json
 ```
 
-To sweep multiple symbols and rank the closest carry/basis unlock candidates before any demo-window attempt:
+多 symbol sweep 并排序最接近解锁的候选：
 
 ```bash
 uv run crypto-assistant strategy carry-basis-optimize \
@@ -317,187 +319,19 @@ uv run crypto-assistant strategy carry-basis-optimize \
   --json
 ```
 
-Start OKX sweeps with a small symbol set because each symbol reads spot/perp/funding/futures diagnostics from public endpoints. Use `--max-symbols`, `--request-budget-seconds`, and `--per-symbol-timeout-seconds` for bounded observer runs; sweep JSON includes per-symbol `observations` plus skipped, timeout, failed, and cache-hit counts. These controls are read-only and do not bypass demo preflight.
+OKX sweep 建议从小 symbol 集开始，因为每个 symbol 都会读取 spot/perp/funding/futures 公共端点诊断。使用 `--max-symbols`、`--request-budget-seconds` 和 `--per-symbol-timeout-seconds` 控制 bounded observer run；这些控制是只读的，不会绕过 demo preflight。
 
-Dynamic universe and regime routing are read-only foundations for the next profit-expansion layer. `strategy universe` filters configured symbols by spread, 24h quote volume, depth, and completed-candle behavior; `strategy regime-report` classifies a symbol as `trend`, `range`, `carry`, `illiquid`, or `avoid` so future strategy selection can route range markets to grid/mean-reversion, trends to breakout/momentum, and carry regimes to basis/funding scans.
+## OKX Demo Trading 路径
 
-Range-grid validation uses the regime router and remains paper-only:
-
-```bash
-uv run crypto-assistant strategy scan \
-  --config ../configs/config.example.yaml \
-  --strategy range-grid \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-
-uv run crypto-assistant strategy run \
-  --config ../configs/config.example.yaml \
-  --strategy range-grid \
-  --symbol BTC/USDT \
-  --max-cycles 1 \
-  --interval-seconds 0 \
-  --execution-mode paper \
-  --json
-```
-
-`range-grid` builds a bounded ladder from completed candles, estimates completed grid cycles after fee and slippage costs, and emits simulated buy/sell legs for the existing risk, budget, paper execution, journal, and scoring paths. It reports `paper_only=true`; it is deliberately excluded from OKX Demo and live execution until a separate stateful order manager is implemented and sandbox-tested.
-
-Smart DCA basket validation looks for major-asset accumulation opportunities when a configured symbol has pulled back from its recent completed-candle high and is not overweight versus the target basket:
-
-```bash
-uv run crypto-assistant strategy scan \
-  --config ../configs/config.example.yaml \
-  --strategy smart-dca-basket \
-  --symbol SOL/USDT \
-  --exchange mock \
-  --json
-
-uv run crypto-assistant strategy run \
-  --config ../configs/config.example.yaml \
-  --strategy smart-dca-basket \
-  --symbol SOL/USDT \
-  --max-cycles 1 \
-  --interval-seconds 0 \
-  --execution-mode paper \
-  --json
-```
-
-`smart-dca-basket` calculates recent drawdown, applies drawdown-tier size multipliers, checks quote balance and ask-side depth, compares current basket weight against `smart_dca.target_weights_pct`, and emits one simulated spot buy leg when the expected discount remains positive after fee and slippage assumptions. It is portfolio-management evidence, not guaranteed alpha: the reported net edge is an estimated discount/accumulation edge. The strategy is registered with `demo_supported=false` and `live_supported=false`.
-
-Hedged-maker/XEMM validation plans a passive maker quote and an immediate hedge preview:
-
-```bash
-uv run crypto-assistant strategy scan \
-  --config ../configs/config.example.yaml \
-  --strategy hedged-maker \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-
-uv run crypto-assistant strategy run \
-  --config ../configs/config.example.yaml \
-  --strategy hedged-maker \
-  --symbol BTC/USDT \
-  --max-cycles 1 \
-  --interval-seconds 0 \
-  --execution-mode paper \
-  --json
-
-uv run crypto-assistant strategy hedged-maker-report \
-  --config ../configs/config.example.yaml \
-  --limit 50 \
-  --json
-```
-
-`hedged-maker` estimates maker-buy/hedge-sell and maker-sell/hedge-buy candidates across configured exchanges, checks maker inventory and hedge depth, subtracts maker/taker fees plus hedge slippage, and persists paper maker quotes under `hedged_maker.paper_state_path`. Repeated paper runs use `strategy_runtime.order_ttl_seconds` and `strategy_runtime.reprice_threshold_pct` to keep, cancel, or replace quotes; crossed paper quotes simulate the taker hedge and record realized PnL separately from expected scan edge. The paper fill model also supports queue position, partial fills, stale quote cancellation, cancel latency, adverse selection detection, and expanded hedge slippage through the `hedged_maker.paper_*` settings. Strategy budget output includes active/projected paper quote order count and capital, so `open`, `partial_open`, and not-yet-effective `cancel_pending` quotes constrain future capacity while matching quotes are not double-counted as new orders. `hedged-maker-report` reads the journal and paper state without touching exchanges, then summarizes fill events, lifecycle counts, adverse-selection rate, simulated PnL, and active quote state.
-
-The OKX Demo manager is a separate command for sandbox parity testing from an explicit opportunity file. It does not make the generic `strategy run --strategy hedged-maker --execution-mode demo` path available:
-
-```bash
-uv run crypto-assistant strategy hedged-maker-demo-candidate \
-  --config ../configs/okx.demo.example.yaml \
-  --symbol BTC/USDT \
-  --target-exchange okx \
-  --json
-
-uv run crypto-assistant strategy hedged-maker-demo \
-  --config ../configs/okx.demo.example.yaml \
-  --opportunity-file hedged-maker-okx-opportunity.json \
-  --json
-```
-
-`hedged-maker-demo-candidate` is read-only and returns an `opportunity_file_payload` plus compatibility reasons; local mock OKX configs deliberately report `target_exchange_adapter_is_mock` and must not be sent to the manager. OKX-targeted `strategy scan`/`market-compare` diagnostics for `hedged-maker` reuse the same single-exchange candidate payload path, so sandbox diagnostics are blocked by actual edge, spread, depth, and compatibility reasons instead of the generic paper scanner's secondary hedge exchange config. The opportunity file must describe a `strategy_type=hedged-maker` OKX opportunity with `maker_quote`, `hedge_preview`, and passing `execution_quality` metadata. The manager command requires OKX Demo credentials, `COINBOT_AGENT_OPERATOR_ID`, `agent_trading.allow_demo_orders=true`, the `hedged-maker` strategy allowlist, OKX exchange allowlist, risk approval, budget approval, provider demo-mode verification, and audit logging. It stores own-order state under `hedged_maker.demo_state_path`, submits maker quotes as OKX Demo `post_only` spot orders, cancels/replaces stale or repriced quotes, and sends the hedge only after observing a maker fill. Live maker orders are still unsupported.
-
-DEX/CLMM liquidity provision is intentionally deferred. The readiness command is a no-order checklist for future testnet work:
-
-```bash
-uv run crypto-assistant strategy dex-lp-readiness \
-  --config ../configs/config.example.yaml \
-  --json
-```
-
-The command checks `dex_lp` config prerequisites such as DEX gateway configuration, testnet network selection, wallet policy acknowledgement, gas model, MEV protection, and testnet evidence. It never reads wallet secrets, connects to a DEX, mutates configs, or sends orders. Even when all testnet prerequisites are configured, it reports `execution_supported=false` and keeps live orders unsupported until a real DEX adapter, wallet policy, gas model, MEV controls, and testnet validation are implemented.
-
-Directional exit tuning is also read-only:
-
-```bash
-uv run crypto-assistant strategy exit-optimize \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-
-uv run crypto-assistant strategy position-report \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-```
-
-`exit-optimize` simulates long-only triple-barrier exits across take-profit, stop-loss, trailing-stop, and time-limit candidates. It returns parameter proposals only; it does not edit configs or send orders.
-
-### Backtest Validation
-
-Backtest commands are read-only and use completed candles, fee/slippage-adjusted directional simulation, and no live order dispatch:
-
-```bash
-uv run crypto-assistant backtest run \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-
-uv run crypto-assistant backtest walk-forward \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --windows 2 \
-  --json
-
-uv run crypto-assistant backtest bias-check \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --exchange mock \
-  --json
-```
-
-`backtest run` reports the fill model assumptions, including completed candles, next-bar entry, fee, and slippage. `walk-forward` splits candles into expanding train windows and forward validation windows. `bias-check` is a deterministic diagnostic for obvious local backtest hazards such as incomplete candles, missing warmup, or unstable prefix replay; it is not proof of future profitability.
-
-Strategy evolution is simulation-only. It reads journal evidence, softly archives weak strategies, creates revive candidates, and generates isolated parameter candidates without editing checked-in configs or enabling trading:
-
-```bash
-uv run crypto-assistant strategy evolve \
-  --config ../configs/config.example.yaml \
-  --strategy all \
-  --execution-mode paper \
-  --limit 50 \
-  --json
-
-uv run crypto-assistant strategy candidate-backtest \
-  --config ../configs/config.example.yaml \
-  --strategy trend-breakout \
-  --symbol BTC/USDT \
-  --limit 50 \
-  --json
-```
-
-## OKX Demo Trading Path
-
-Prepare demo credentials locally:
+准备本地 demo 凭证：
 
 ```bash
 cp .env.okx.demo.example .env.okx.demo
 ```
 
-Edit `.env.okx.demo` with OKX Demo Trading credentials. Keep demo and live credentials separate.
+编辑 `.env.okx.demo` 填入 OKX Demo Trading 凭证，并保持 demo 与 live 凭证分离。
 
-Run no-order checks first:
+先运行 no-order 检查：
 
 ```bash
 cd backend
@@ -522,7 +356,7 @@ uv run crypto-assistant strategy operator-brief \
   --json
 ```
 
-Only after the no-order checks pass, use bounded OKX Demo Trading windows. These commands may send tiny OKX Demo Trading orders, never live orders:
+只有 no-order 检查通过后，才使用有界 OKX Demo Trading window。以下命令可能发送极小 OKX Demo Trading 订单，但不会发送 live 订单：
 
 ```bash
 uv run crypto-assistant strategy demo-window \
@@ -542,7 +376,7 @@ uv run crypto-assistant strategy demo-sampling \
   --json
 ```
 
-For hedged-maker sandbox parity, use the explicit opportunity-file manager instead of the generic demo runtime:
+Hedged-maker sandbox parity 使用显式 opportunity-file manager，不走通用 demo runtime：
 
 ```bash
 uv run crypto-assistant strategy hedged-maker-demo-candidate \
@@ -557,7 +391,7 @@ uv run crypto-assistant strategy hedged-maker-demo \
   --json
 ```
 
-Promotion remains evidence-only unless an operator explicitly changes the live gates:
+Promotion 仍然只是 evidence-only，除非 operator 显式修改 live gate：
 
 ```bash
 uv run crypto-assistant strategy promotion-status \
@@ -566,27 +400,27 @@ uv run crypto-assistant strategy promotion-status \
   --json
 ```
 
-`strategy validate-demo --allow-account-mode-switch` is reserved for OKX Demo Trading swap/futures validation. It may switch only the demo account from spot mode to futures mode after provider demo-mode verification and open-risk checks. It must never target live trading.
+`strategy validate-demo --allow-account-mode-switch` 仅用于 OKX Demo Trading swap/futures 验证。它只能在 provider demo-mode verification 和 open-risk 检查通过后切换 demo account mode，绝不能用于 live trading。
 
-## CLI Command Map
+## CLI 命令地图
 
-| Area | Commands |
+| 区域 | 命令 |
 | --- | --- |
-| Config/status | `status`, `config validate` |
-| Exchange/market/account | `exchange list`, `exchange ping`, `exchange sandbox-check`, `market ticker`, `market orderbook`, `market candles`, `account balance` |
-| Arbitrage | `arbitrage scan`, `arbitrage execute` |
-| Strategy discovery | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy dex-lp-readiness`, `strategy market-compare`, `strategy portfolio-status` |
-| Strategy runtime | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
+| 配置/状态 | `status`, `config validate` |
+| 交易所/行情/账户 | `exchange list`, `exchange ping`, `exchange sandbox-check`, `market ticker`, `market orderbook`, `market candles`, `account balance` |
+| 套利 | `arbitrage scan`, `arbitrage execute` |
+| 策略发现 | `strategy list`, `strategy catalog`, `strategy scan`, `strategy discover-routes`, `strategy opportunity-report`, `strategy universe`, `strategy regime-report`, `strategy score`, `strategy advisory-rank`, `strategy dex-lp-readiness`, `strategy market-compare`, `strategy portfolio-status` |
+| 策略运行 | `strategy run`, `strategy review`, `strategy guard-status`, `strategy retrospective`, `strategy evolve`, `strategy candidate-backtest`, `strategy revival-window` |
 | Detached autopilot | `autopilot run`, `autopilot status`, `autopilot report` |
-| Validation/evidence | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy diversification-report`, `strategy directional-sleeve-status`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo-candidate`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
+| 验证/证据 | `strategy validate-local`, `strategy validate-demo`, `strategy validate-demo-window`, `strategy demo-window`, `strategy demo-sampling`, `strategy promotion-status`, `strategy validation-report`, `strategy operator-brief`, `strategy diversification-report`, `strategy directional-sleeve-status`, `strategy pnl-attribution`, `strategy hedged-maker-report`, `strategy hedged-maker-demo-candidate`, `strategy hedged-maker-demo`, `strategy carry-basis-optimize`, `strategy exit-optimize`, `strategy position-report` |
 | Agent live gate | `agent live-readiness`, `agent execute-live`, `agent operation-catalog` |
-| Backtest/report/workflow | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
+| 回测/报告/工作流 | `backtest run`, `backtest walk-forward`, `backtest bias-check`, `report generate`, `workflow run` |
 
-Every machine-readable CLI command should support `--json`, and every CLI command should support `--help`.
+每个机器可读 CLI 命令都应支持 `--json`，每个 CLI 命令都应支持 `--help`。
 
-## Environment
+## 环境变量
 
-Use `COINBOT_` variables only:
+只使用 `COINBOT_` 前缀：
 
 ```bash
 COINBOT_TRADING_LIVE_TRADING=false
@@ -603,21 +437,21 @@ COINBOT_OKX_PASSPHRASE=
 COINBOT_OKX_DEMO=true
 ```
 
-Without OKX credentials, mock exchange, paper validation, local scans, and many public market/analytics endpoints still work. Private OKX account reads and OKX Demo Trading require local credentials.
+没有 OKX 凭证时，mock exchange、paper validation、本地扫描以及许多公共市场/分析端点仍可使用。私有 OKX 账户读取和 OKX Demo Trading 需要本地凭证。
 
-## Repository Hygiene
+## 仓库卫生
 
-Keep local runtime artifacts out of git:
+不要把本地运行产物提交到 git：
 
-- Secret files: `.env`, `.env.*`, `.env.okx.demo`, and `.env.okx.live`; only the checked-in `*.example` templates are safe.
-- Runtime evidence: `logs/`, `backend/logs/`, JSONL journals, local state files, generated opportunity payloads, and temporary SQLite/DuckDB databases.
-- Tool output: Python caches, uv cache, Node build output, Rust `target/`, coverage reports, and editor metadata.
+- 密钥文件：`.env`、`.env.*`、`.env.okx.demo`、`.env.okx.live`；只有已提交的 `*.example` 模板是安全的。
+- 运行证据：`logs/`、`backend/logs/`、JSONL journal、本地 state 文件、生成的 opportunity payload 和临时 SQLite/DuckDB 数据库。
+- 工具输出：Python cache、uv cache、Node build output、Rust `target/`、coverage report 和编辑器元数据。
 
-Do commit the lock files (`uv.lock`, `frontend/package-lock.json`, `Cargo.lock`) and the curated refactor state JSON files under `docs/plan/2026-05-09-refactor/`.
+应提交锁文件 `uv.lock`、`frontend/package-lock.json`、`Cargo.lock`，以及 `docs/plan/2026-05-09-refactor/` 下经过整理的重构 state JSON。
 
-## Verification
+## 验证
 
-Run the relevant checks after changes:
+变更后运行相关检查：
 
 ```bash
 cd backend
@@ -637,7 +471,7 @@ npm install
 npm run build
 ```
 
-For CLI smoke checks:
+CLI smoke check：
 
 ```bash
 cd backend
@@ -647,12 +481,12 @@ uv run crypto-assistant config validate --config ../configs/config.example.yaml 
 uv run crypto-assistant strategy catalog --config ../configs/config.example.yaml --json
 ```
 
-## Documentation
+## 文档入口
 
-Start with:
+优先阅读：
 
-- `docs/DESIGN.md` for current architecture and public interfaces.
-- `docs/plan/2026-05-09-refactor/00-refactor-spec.md` for the crypto trading assistant refactor goals.
-- `docs/plan/2026-05-09-refactor/` for active phase reports, traceability, acceptance notes, and final reports.
+- [docs/DESIGN.md](docs/DESIGN.md)：当前架构和公共接口。
+- [docs/plan/2026-05-09-refactor/00-refactor-spec.md](docs/plan/2026-05-09-refactor/00-refactor-spec.md)：crypto trading assistant 重构目标。
+- [docs/plan/2026-05-09-refactor/](docs/plan/2026-05-09-refactor/)：活动 phase report、traceability、acceptance notes 和 final reports。
 
-Keep refactor planning and acceptance artifacts under `docs/plan/2026-05-09-refactor/`. Historical migrated task records live under `docs/tasks/**` and `docs/acceptance/**`.
+重构计划和验收材料必须放在 `docs/plan/2026-05-09-refactor/` 下。历史迁移任务记录位于 `docs/tasks/**` 和 `docs/acceptance/**`。
